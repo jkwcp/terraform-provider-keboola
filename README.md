@@ -6,6 +6,8 @@ A [Terraform](https://www.terraform.io) Custom Provider for [Keboola Connection 
 
 ## Description
 
+This temproray git repo is pulled from 
+
 This is a custom terraform provider for managing common resources within the Keboola Connection (KBC) platform, such as Transformations, Orchestrations, Writers etc.
 
 ## Supported Resources
