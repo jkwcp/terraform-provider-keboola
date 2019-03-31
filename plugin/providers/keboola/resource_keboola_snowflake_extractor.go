@@ -10,10 +10,30 @@ import (
 )
 
 //region Keboola API Contracts
+
+/*
+type SnowflakeExtractorDatabaseParameters struct {
+	HostName          string `json:"host"`
+	Database          string `json:"database"`
+	Password          string `json:"password,omitempty"`
+	EncryptedPassword string `json:"#password,omitempty"`
+	Username          string `json:"user"`
+	Schema            string `json:"schema"`
+	Port              string `json:"port"`
+	Driver            string `json:"driver"`
+	Warehouse         string `json:"warehouse"`
+}
+
+
+type SnowflakeWriterConfiguration struct {
+	Parameters SnowflakeWriterParameters `json:"parameters"`
+	Storage    SnowflakeWriterStorage    `json:"storage,omitempty"`
+}
+*/
 type SnowFlakeExtractor struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
-	Description string `json:"description`
+	Description string `json:"description"`
 }
 
 //endregion
@@ -48,7 +68,7 @@ func resourceSnowFlakeExtractorCreate(d *schema.ResourceData, meta interface{}) 
 	createExtractorBuffer := buffer.FromForm(createExtractorForm)
 
 	client := meta.(*KBCClient)
-	createResponse, err := client.PostToStorage("storage/components/keboola.ex-google-drive/configs", createExtractorBuffer)
+	createResponse, err := client.PostToStorage("storage/components/keboola.ex-db-snowflake/configs", createExtractorBuffer)
 
 	if hasErrors(err, createResponse) {
 		return extractError(err, createResponse)
