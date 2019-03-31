@@ -2,6 +2,7 @@ package keboola
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/url"
 
@@ -40,10 +41,10 @@ type SnowFlakeExtractor struct {
 
 func resourceKeboolaSnowlakeExtractor() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceSnowFlakeExtractorCreate,
-		Read:   resourceSnowFlakeExtractorRead,
-		Update: resourceSnowFlakeExtractorUpdate,
-		Delete: resourceSnowFlakeExtractorDelete,
+		Create: resourceKeboolaSnowFlakeExtractorCreate,
+		Read:   resourceKeboolaSnowFlakeExtractorRead,
+		Update: resourceKeboolaSnowFlakeExtractorUpdate,
+		Delete: resourceKeboolaSnowFlakeExtractorDelete,
 
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -58,7 +59,7 @@ func resourceKeboolaSnowlakeExtractor() *schema.Resource {
 	}
 }
 
-func resourceSnowFlakeExtractorCreate(d *schema.ResourceData, meta interface{}) error {
+func resourceKeboolaSnowFlakeExtractorCreate(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Creating Google Drive Extractor in Keboola.")
 
 	createExtractorForm := url.Values{}
@@ -84,18 +85,60 @@ func resourceSnowFlakeExtractorCreate(d *schema.ResourceData, meta interface{}) 
 
 	d.SetId(string(createResult.ID))
 
-	return nil
+	return resourceKeboolaSnowFlakeExtractorRead(d, meta)
 
 }
 
-func resourceSnowFlakeExtractorRead(d *schema.ResourceData, meta interface{}) error {
+func resourceKeboolaSnowFlakeExtractorRead(d *schema.ResourceData, meta interface{}) error {
+	log.Println("[INFO] Reading SnowFlake Extractor from Keboola.")
+
+	client := meta.(*KBCClient)
+	getSnowFlakeExtractorResponse, err := client.GetFromStorage(fmt.Sprintf("storage/components/keboola.ex-db-snowflake/configs/%s", d.Id()))
+
+	if d.Id() == "" {
+		return nil
+	}
+
+	if hasErrors(err, getSnowFlakeExtractorResponse) {
+		if getSnowFlakeExtractorResponse.StatusCode == 404 {
+			d.SetId("")
+			return nil
+		}
+
+		return extractError(err, getSnowFlakeExtractorResponse)
+	}
+
+	var snowFlakeExtractor SnowFlakeExtractor
+
+	decoder := json.NewDecoder(getSnowFlakeExtractorResponse.Body)
+	err = decoder.Decode(&snowFlakeExtractor)
+
+	if err != nil {
+		return err
+	}
+
+	d.Set("id", snowFlakeExtractor.ID)
+	d.Set("name", snowFlakeExtractor.Name)
+	d.Set("description", snowFlakeExtractor.Description)
+
 	return nil
 }
 
-func resourceSnowFlakeExtractorUpdate(d *schema.ResourceData, meta interface{}) error {
+func resourceKeboolaSnowFlakeExtractorUpdate(d *schema.ResourceData, meta interface{}) error {
 	return nil
 }
 
-func resourceSnowFlakeExtractorDelete(d *schema.ResourceData, meta interface{}) error {
+func resourceKeboolaSnowFlakeExtractorDelete(d *schema.ResourceData, meta interface{}) error {
+	log.Printf("[INFO] Deleting Snowflake Extractor in Keboola: %s", d.Id())
+
+	client := meta.(*KBCClient)
+	destroyResponse, err := client.DeleteFromStorage(fmt.Sprintf("storage/components/keboola.ex-db-snowflake/configs/%s", d.Id()))
+
+	if hasErrors(err, destroyResponse) {
+		return extractError(err, destroyResponse)
+	}
+
+	d.SetId("")
+
 	return nil
 }
