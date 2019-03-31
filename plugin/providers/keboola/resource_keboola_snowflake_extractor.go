@@ -125,7 +125,38 @@ func resourceKeboolaSnowFlakeExtractorRead(d *schema.ResourceData, meta interfac
 }
 
 func resourceKeboolaSnowFlakeExtractorUpdate(d *schema.ResourceData, meta interface{}) error {
-	return nil
+	log.Println("[INFO] Updating Snowflake Writer in Keboola.")
+
+	client := meta.(*KBCClient)
+
+	getExtractorResponse, err := client.GetFromStorage(fmt.Sprintf("storage/components/keboola.ex-db-snowflake/configs/%s", d.Id()))
+
+	if hasErrors(err, getExtractorResponse) {
+		return extractError(err, getExtractorResponse)
+	}
+
+	var snowFlakeExtractor SnowFlakeExtractor
+
+	decoder := json.NewDecoder(getExtractorResponse.Body)
+	err = decoder.Decode(&snowFlakeExtractor)
+
+	if err != nil {
+		return err
+	}
+
+	updateCredentialsForm := url.Values{}
+	updateCredentialsForm.Add("name", d.Get("name").(string))
+	updateCredentialsForm.Add("description", d.Get("description").(string))
+	updateCredentialsForm.Add("changeDescription", "Updated Snowflake Writer configuration via Terraform")
+
+	updateCredentialsBuffer := buffer.FromForm(updateCredentialsForm)
+	updateCredentialsResponse, err := client.PutToStorage(fmt.Sprintf("storage/components/keboola.ex-db-snowflake/configs/%s", d.Id()), updateCredentialsBuffer)
+
+	if hasErrors(err, updateCredentialsResponse) {
+		return extractError(err, updateCredentialsResponse)
+	}
+
+	return resourceKeboolaSnowFlakeExtractorRead(d, meta)
 }
 
 func resourceKeboolaSnowFlakeExtractorDelete(d *schema.ResourceData, meta interface{}) error {
