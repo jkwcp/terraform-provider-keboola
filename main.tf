@@ -11,3 +11,7 @@ resource "keboola_googledrive_extractor" "test2" {
   name  = "g2"
 }
 
+
+resource "keboola_snowflake_extractor" "test3" {
+  name = "sss1"
+}

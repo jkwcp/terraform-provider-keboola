@@ -37,6 +37,8 @@ func Provider() terraform.ResourceProvider {
 			"keboola_orchestration_tasks":      resourceKeboolaOrchestrationTasks(),
 			"keboola_csvimport_extractor":      resourceKeboolaCSVImportExtractor(),
 			"keboola_googledrive_extractor":    resourceGoogleDriveExtractor(),
+			"keboola_awsredshift_writer":       resourceKeboolaAWSRedshiftWriter(),
+			"keboola_snowflake_extractor":      resourceKeboolaSnowlakeExtractor(),
 		},
 
 		//the client you use to interact with the targeted API
