@@ -135,7 +135,7 @@ func resourceKeboolaSQLServerWriter() *schema.Resource {
 							Type:     schema.TypeString,
 							Required: true,
 						},
-						"sql_version": {
+						"tdsVersion": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
@@ -189,7 +189,7 @@ func resourceKeboolaSQLServerWriterCreate(d *schema.ResourceData, meta interface
 			"hostname":        provisionedSQLServer.Credentials.HostName,
 			"port":            strconv.Itoa(provisionedSQLServer.Credentials.Port),
 			"database":        provisionedSQLServer.Credentials.Database,
-			"sql_version":     provisionedSQLServer.Credentials.SqlServerversion,
+			"tdsVersion":      provisionedSQLServer.Credentials.SqlServerversion,
 			"username":        provisionedSQLServer.Credentials.Username,
 			"hashed_password": provisionedSQLServer.Credentials.Password,
 			"instancename":    provisionedSQLServer.Credentials.Instance,
@@ -288,7 +288,7 @@ func mapSQLServerCredentialsToConfiguration(source map[string]interface{}) SQLSe
 		databaseParameters.Database = val.(string)
 	}
 
-	if val, ok := source["sql_version"]; ok {
+	if val, ok := source["tdsVersion"]; ok {
 		databaseParameters.SqlServerversion = val.(string)
 	}
 
@@ -374,7 +374,7 @@ func resourceKeboolaSQLServerWriterRead(d *schema.ResourceData, meta interface{}
 		dbParameters["hostname"] = databaseCredentials.HostName
 		dbParameters["port"] = databaseCredentials.Port
 		dbParameters["database"] = databaseCredentials.Database
-		dbParameters["sql_version"] = databaseCredentials.SqlServerversion
+		dbParameters["tdsVersion"] = databaseCredentials.SqlServerversion
 		dbParameters["instancename"] = databaseCredentials.Instance
 
 		dbParameters["username"] = databaseCredentials.Username
