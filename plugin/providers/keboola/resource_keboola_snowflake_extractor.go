@@ -105,7 +105,7 @@ func resourceKeboolaSnowFlakeExtractorCreate(d *schema.ResourceData, meta interf
 	client := meta.(*KBCClient) //
 	d.Partial(true)
 
-	createdSnowflakeID, err := createSnowflakeExtractorConfiguration(d.Get("name").(string), d.Get("description").(string), client)
+	createdSnowflakeExtractorID, err := createSnowflakeExtractorConfiguration(d.Get("name").(string), d.Get("description").(string), client)
 
 	if err != nil {
 		return err
@@ -114,9 +114,9 @@ func resourceKeboolaSnowFlakeExtractorCreate(d *schema.ResourceData, meta interf
 	d.SetPartial("name")
 	d.SetPartial("description")
 
-	snowflakeDatabaseCredentials := d.Get("snowflake_db_parameters").(map[string]interface{})
+	snowflakeExtractorDatabaseCredentials := d.Get("snowflake_db_parameters").(map[string]interface{})
 
-	err = createSnowflakeExtractorDatabaseConfiguration(snowflakeDatabaseCredentials, createdSnowflakeID, client)
+	err = createSnowflakeExtractorDatabaseConfiguration(snowflakeExtractorDatabaseCredentials, createdSnowflakeExtractorID, client)
 
 	if err != nil {
 		return err
@@ -124,7 +124,7 @@ func resourceKeboolaSnowFlakeExtractorCreate(d *schema.ResourceData, meta interf
 
 	d.SetPartial("snowflake_db_parameters")
 
-	d.SetId(createdSnowflakeID)
+	d.SetId(createdSnowflakeExtractorID)
 
 	d.Partial(false)
 
@@ -132,7 +132,7 @@ func resourceKeboolaSnowFlakeExtractorCreate(d *schema.ResourceData, meta interf
 
 }
 
-func createSnowflakeExtractorConfiguration(name string, description string, client *KBCClient) (createdSnowflakeID string, err error) {
+func createSnowflakeExtractorConfiguration(name string, description string, client *KBCClient) (createdSnowflakeExtractorID string, err error) {
 	createExtractorForm := url.Values{}
 	createExtractorForm.Add("name", name)
 	createExtractorForm.Add("description", description)
