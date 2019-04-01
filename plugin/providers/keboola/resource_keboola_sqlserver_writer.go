@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"strconv"
 
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/plmwong/terraform-provider-keboola/plugin/providers/keboola/buffer"
@@ -55,26 +56,29 @@ type SQLServerWriterConfiguration struct {
 }
 type SQLServerWriterDatabaseParameters struct {
 	HostName          string `json:"host"`
-	Database          string `json:"database"`
-	Password          string `json:"password,omitempty"`
+	Database          string `json:"db"`
+	Instance          string `json:"instance"`
+	Password          string `json:"#password,omitempty"`
 	EncryptedPassword string `json:"#password,omitempty"`
 	Username          string `json:"user"`
-	//	Version           string `json:"version"`
-	//SSH  string `json:"sshtunnel"`
-	Port string `json:"port"`
+	Driver            string `json:"driver"`
+	SqlServerversion  string `json:"tdsVersion"`
+	Port              string `json:"port"`
 }
 
 type ProvisionSQLServerResponse struct {
 	Status      string `json:"status"`
 	Credentials struct {
-		ID       int    `json:"id"`
-		HostName string `json:"hostname"`
-		Port     int    `json:"port"`
-		Database string `json:"db"`
-		Username string `json:"user"`
-		Password string `json:"password"`
-		//	Version     string `json:"version"`
-		WorkspaceID int `json:"workspaceId"`
+		ID               int    `json:"id"`
+		HostName         string `json:"hostname"`
+		Port             int    `json:"port"`
+		Instance         string `json:"instance"`
+		Database         string `json:"db"`
+		Username         string `json:"user"`
+		Password         string `json:"password"`
+		Driver           string `json:"driver"`
+		SqlServerversion string `json:"tdsVersion"`
+		WorkspaceID      int    `json:"workspaceId"`
 	} `json:"credentials"`
 }
 
@@ -130,11 +134,11 @@ func resourceKeboolaSQLServerWriter() *schema.Resource {
 						"database": {
 							Type:     schema.TypeString,
 							Required: true,
-						}, /*
-							"server_version": {
-								Type:     schema.TypeInt,
-								Required: true,
-							},*/
+						},
+						"sql_version": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
 						"ssh_tunnel": {
 							Type:     schema.TypeBool,
 							Optional: true,
@@ -173,24 +177,25 @@ func resourceKeboolaSQLServerWriterCreate(d *schema.ResourceData, meta interface
 	}
 
 	SQLServerDatabaseCredentials := d.Get("sqlserver_db_parameters").(map[string]interface{})
-	/*
-		if d.Get("provision_new_instance").(bool) == true {
-			provisionedSQLServer, err := provisionSQLServerInstance(client)
 
-			if err != nil {
-				return err
-			}
+	if d.Get("provision_new_instance").(bool) == true {
+		provisionedSQLServer, err := provisionSQLServerInstance(client)
 
-			SQLServerDatabaseCredentials = map[string]interface{}{
-				"hostname":        provisionedSQLServer.Credentials.HostName,
-				"port":            strconv.Itoa(provisionedSQLServer.Credentials.Port),
-				"database":        provisionedSQLServer.Credentials.Database,
-				"version":         provisionedSQLServer.Credentials.Version,
-				"username":        provisionedSQLServer.Credentials.Username,
-				"hashed_password": provisionedSQLServer.Credentials.Password,
-			}
+		if err != nil {
+			return err
 		}
-	*/
+
+		SQLServerDatabaseCredentials = map[string]interface{}{
+			"hostname":        provisionedSQLServer.Credentials.HostName,
+			"port":            strconv.Itoa(provisionedSQLServer.Credentials.Port),
+			"database":        provisionedSQLServer.Credentials.Database,
+			"sql_version":     provisionedSQLServer.Credentials.SqlServerversion,
+			"username":        provisionedSQLServer.Credentials.Username,
+			"hashed_password": provisionedSQLServer.Credentials.Password,
+			"instancename":    provisionedSQLServer.Credentials.Instance,
+		}
+	}
+
 	//Need to configure configuration
 	err = createSQLServerCredentialsConfiguration(SQLServerDatabaseCredentials, createSQLServerID, client)
 
@@ -282,11 +287,14 @@ func mapSQLServerCredentialsToConfiguration(source map[string]interface{}) SQLSe
 	if val, ok := source["database"]; ok {
 		databaseParameters.Database = val.(string)
 	}
-	/*
-		if val, ok := source["server_version"]; ok {
-			databaseParameters.Version = val.(string)
-		}
-	*/
+
+	if val, ok := source["sql_version"]; ok {
+		databaseParameters.SqlServerversion = val.(string)
+	}
+
+	if val, ok := source["instancename"]; ok {
+		databaseParameters.Instance = val.(string)
+	}
 	if val, ok := source["username"]; ok {
 		databaseParameters.Username = val.(string)
 	}
@@ -298,6 +306,7 @@ func mapSQLServerCredentialsToConfiguration(source map[string]interface{}) SQLSe
 			databaseParameters.EncryptedPassword = val.(string)
 		}
 	*/
+	databaseParameters.Driver = "mssql"
 	return databaseParameters
 }
 func createSQLServerCredentialsConfiguration(sqlserverCredentials map[string]interface{}, createdSQLServerID string, client *KBCClient) error {
@@ -365,9 +374,12 @@ func resourceKeboolaSQLServerWriterRead(d *schema.ResourceData, meta interface{}
 		dbParameters["hostname"] = databaseCredentials.HostName
 		dbParameters["port"] = databaseCredentials.Port
 		dbParameters["database"] = databaseCredentials.Database
-		//	dbParameters["server_version"] = databaseCredentials.Version
+		dbParameters["sql_version"] = databaseCredentials.SqlServerversion
+		dbParameters["instancename"] = databaseCredentials.Instance
+
 		dbParameters["username"] = databaseCredentials.Username
 		dbParameters["hashed_password"] = databaseCredentials.EncryptedPassword
+
 		//dbParameters["ssh_tunnel"] = databaseCredentials.EncryptedPassword
 		d.Set("sqlserver_db_parameters", dbParameters)
 	}
