@@ -37,6 +37,9 @@ func Provider() terraform.ResourceProvider {
 			"keboola_aws_redshift_writer":       resourceKeboolaAWSRedshiftWriter(),
 			"keboola_aws_redshift_writer_table": resourceKeboolaAWSRedShiftWriterTable(),
 			"keboola_sqlserver_writer":          resourceKeboolaSQLServerWriter(),
+			"keboola_googledrive_extractor":     resourceGoogleDriveExtractor(),
+			"keboola_awsredshift_writer":        resourceKeboolaAWSRedshiftWriter(),
+			"keboola_snowflake_extractor":       resourceKeboolaSnowlakeExtractor(),
 		},
 
 		ConfigureFunc: providerConfigure,
