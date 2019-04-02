@@ -1,17 +1,16 @@
+#add your own configurations
+
+#must include api_key, look like this:
+
+#provider "keboola" {
+#  api_key = "6017-153348-I39OH0o6ZC6Gcg3hdPqIJbojCWRgb4XLgoXRS1mz"
+#}
+
+#Configurations will be like:
+
+#resource "keboola_component_writer" "Component Name" {
+#     Configurations....  
+#}
 provider "keboola" {
-  api_key = "5959-152644-fWyZASDSe52fQmq5mZPD4tmrfmnDSxQMXKD1Llj5"
-}
-
-
-resource "keboola_googledrive_extractor" "test1" {
-  name  = "Example google"
-}
-
-resource "keboola_googledrive_extractor" "test2" {
-  name  = "g2"
-}
-
-
-resource "keboola_snowflake_extractor" "test3" {
-  name = "sss1"
+  api_key = "6017-153348-I39OH0o6ZC6Gcg3hdPqIJbojCWRgb4XLgoXRS1mz"
 }
