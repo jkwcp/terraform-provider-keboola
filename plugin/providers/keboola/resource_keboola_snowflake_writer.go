@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/url"
-    "strconv"
+	"strconv"
 
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/plmwong/terraform-provider-keboola/plugin/providers/keboola/buffer"
@@ -285,13 +285,27 @@ func provisionSnowflakeInstance(client *KBCClient) (provisionedSnowflakeResponse
 func mapSnowflakeCredentialsToConfiguration(source map[string]interface{}) SnowflakeWriterDatabaseParameters {
 	databaseParameters := SnowflakeWriterDatabaseParameters{}
 
-	if val, ok := source["hostname"]; ok { databaseParameters.HostName = val.(string) }
-	if val, ok := source["port"]; ok { databaseParameters.Port = val.(string) }
-	if val, ok := source["database"]; ok { databaseParameters.Database = val.(string) }
-	if val, ok := source["schema"]; ok { databaseParameters.Schema = val.(string) }
-	if val, ok := source["warehouse"]; ok { databaseParameters.Warehouse = val.(string) }
-	if val, ok := source["username"]; ok { databaseParameters.Username = val.(string) }
-	if val, ok := source["hashed_password"]; ok { databaseParameters.EncryptedPassword = val.(string) }
+	if val, ok := source["hostname"]; ok {
+		databaseParameters.HostName = val.(string)
+	}
+	if val, ok := source["port"]; ok {
+		databaseParameters.Port = val.(string)
+	}
+	if val, ok := source["database"]; ok {
+		databaseParameters.Database = val.(string)
+	}
+	if val, ok := source["schema"]; ok {
+		databaseParameters.Schema = val.(string)
+	}
+	if val, ok := source["warehouse"]; ok {
+		databaseParameters.Warehouse = val.(string)
+	}
+	if val, ok := source["username"]; ok {
+		databaseParameters.Username = val.(string)
+	}
+	if val, ok := source["hashed_password"]; ok {
+		databaseParameters.EncryptedPassword = val.(string)
+	}
 
 	databaseParameters.Driver = "snowflake"
 
