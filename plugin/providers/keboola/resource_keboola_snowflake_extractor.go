@@ -82,7 +82,7 @@ func resourceKeboolaSnowlakeExtractor() *schema.Resource {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
-						"username": {
+						"user": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
@@ -173,7 +173,7 @@ func mapCredentialsToConfiguration(source map[string]interface{}) SnowflakeExtra
 	if val, ok := source["warehouse"]; ok {
 		databaseParameters.Warehouse = val.(string)
 	}
-	if val, ok := source["username"]; ok {
+	if val, ok := source["user"]; ok {
 		databaseParameters.Username = val.(string)
 	}
 	if val, ok := source["hashed_password"]; ok {
