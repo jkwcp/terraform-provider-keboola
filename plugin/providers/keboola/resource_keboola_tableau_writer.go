@@ -48,10 +48,9 @@ func resourceKeboolaTableauWriter() *schema.Resource {
 func resourceKeboolaTableauWriterCreate(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Creating Tableau Writer in Keboola.")
 
-	writerID := d.Get("writer_id").(string)
 	client := meta.(*KBCClient)
 
-	createdConfigID, err := createTableauWriterConfiguration(writerID, d.Get("name").(string), d.Get("description").(string), client)
+	createdConfigID, err := createTableauWriterConfiguration(d.Get("name").(string), d.Get("description").(string), client)
 
 	if err != nil {
 		return err
@@ -62,14 +61,14 @@ func resourceKeboolaTableauWriterCreate(d *schema.ResourceData, meta interface{}
 	return resourceKeboolaTableauWriterRead(d, meta)
 }
 
-func createTableauWriterConfiguration(writerID string, name string, description string, client *KBCClient) (createdID string, err error) {
+func createTableauWriterConfiguration(name string, description string, client *KBCClient) (createdID string, err error) {
 	form := url.Values{}
 	form.Add("name", name)
 	form.Add("description", description)
 
 	formdataBuffer := buffer.FromForm(form)
 
-	createWriterConfigResp, err := client.PutToStorage(fmt.Sprintf("storage/components/tde-exporter/configs/%s", writerID), formdataBuffer)
+	createWriterConfigResp, err := client.PostToStorage("storage/components/tde-exporter/configs", formdataBuffer)
 
 	if err != nil {
 		return "", err
@@ -94,13 +93,11 @@ func createTableauWriterConfiguration(writerID string, name string, description 
 func resourceKeboolaTableauWriterRead(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Reading Tableau Writers from Keboola.")
 
+	client := meta.(*KBCClient)
+	getResp, err := client.GetFromStorage(fmt.Sprintf("storage/components/tde-exporter/configs/%s", d.Id()))
 	if d.Id() == "" {
 		return nil
 	}
-
-	client := meta.(*KBCClient)
-	getResp, err := client.GetFromStorage(fmt.Sprintf("storage/components/tde-exporter/configs/%s", d.Id()))
-
 	if hasErrors(err, getResp) {
 		if getResp.StatusCode == 404 {
 			d.SetId("")
@@ -129,22 +126,31 @@ func resourceKeboolaTableauWriterRead(d *schema.ResourceData, meta interface{}) 
 func resourceKeboolaTableauWriterUpdate(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Updating Tableau Writer in Keboola.")
 
-	form := url.Values{}
-	form.Add("name", d.Get("name").(string))
-	form.Add("description", d.Get("description").(string))
-
 	client := meta.(*KBCClient)
-	formdataBuffer := buffer.FromForm(form)
-	putResp, err := client.PutToStorage(fmt.Sprintf("storage/components/tde-exporter/configs/%s", d.Id()), formdataBuffer)
+
+	putResp, err := client.GetFromStorage(fmt.Sprintf("storage/components/tde-exporter/configs/%s", d.Id()))
+
+	if hasErrors(err, putResp) {
+		return extractError(err, putResp)
+	}
+	var tableauWriter TableauWriter
+
+	decoder := json.NewDecoder(putResp.Body)
+	err = decoder.Decode(&tableauWriter)
 
 	if err != nil {
 		return err
 	}
 
-	if hasErrors(err, putResp) {
-		return extractError(err, putResp)
-	}
+	updateCredentialsForm := url.Values{}
+	updateCredentialsForm.Add("name", d.Get("name").(string))
+	updateCredentialsForm.Add("description", d.Get("description").(string))
 
+	updateCredentialsBuffer := buffer.FromForm(updateCredentialsForm)
+	updateCredentialsResponse, err := client.PutToStorage(fmt.Sprintf("storage/components/tde-exporter/configs/%s", d.Id()), updateCredentialsBuffer)
+	if hasErrors(err, updateCredentialsResponse) {
+		return extractError(err, updateCredentialsResponse)
+	}
 	return resourceKeboolaTableauWriterRead(d, meta)
 }
 
@@ -152,12 +158,6 @@ func resourceKeboolaTableauWriterDelete(d *schema.ResourceData, meta interface{}
 	log.Printf("[INFO] Deleting Tableau Writer in Keboola: %s", d.Id())
 
 	client := meta.(*KBCClient)
-	delFromSyrupResp, err := client.DeleteFromSyrup(fmt.Sprintf("tde-exporter/configs/%s", d.Id()))
-
-	if hasErrors(err, delFromSyrupResp) {
-		return extractError(err, delFromSyrupResp)
-	}
-
 	delFromStorageResp, err := client.DeleteFromStorage(fmt.Sprintf("storage/components/tde-exporter/configs/%s", d.Id()))
 
 	if hasErrors(err, delFromStorageResp) {
