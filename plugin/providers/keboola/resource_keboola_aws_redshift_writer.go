@@ -2,12 +2,10 @@ package keboola
 
 //This isn't complete
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/url"
-	"strconv"
 
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/plmwong/terraform-provider-keboola/plugin/providers/keboola/buffer"
@@ -22,7 +20,6 @@ type AWSRedshiftWriterDatabaseParameters struct {
 	Schema            string `json:"schema"`
 	Port              string `json:"port"`
 	Driver            string `json:"driver"`
-	Warehouse         string `json:"warehouse"`
 }
 
 type AWSRedShiftWriterTableItem struct {
@@ -67,7 +64,7 @@ type ProvisionedAWSRedShiftResponse struct {
 	Status      string `json:"status"`
 	Credentials struct {
 		ID          int    `json:"id"`
-		HostName    string `json:"hostname"`
+		Hostname    string `json:"host"`
 		Port        int    `json:"port"`
 		Database    string `json:"db"`
 		Schema      string `json:"schema"`
@@ -110,7 +107,7 @@ func resourceKeboolaAWSRedshiftWriter() *schema.Resource {
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"hostname": {
+						"host": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
@@ -173,23 +170,6 @@ func resourceKeboolaAWSRedshiftWriterCreate(d *schema.ResourceData, meta interfa
 	}
 	awsredshiftDatabaseCredentials := d.Get("redshift_wr_parameters").(map[string]interface{})
 
-	if d.Get("provision_new_instance").(bool) == true {
-		provisionedAWSRedshift, err := provisionAWSRedShiftInstance(client)
-
-		if err != nil {
-			return err
-		}
-
-		awsredshiftDatabaseCredentials = map[string]interface{}{
-			"hostname":        provisionedAWSRedshift.Credentials.HostName,
-			"port":            strconv.Itoa(provisionedAWSRedshift.Credentials.Port),
-			"database":        provisionedAWSRedshift.Credentials.Database,
-			"schema":          provisionedAWSRedshift.Credentials.Schema,
-			"warehouse":       provisionedAWSRedshift.Credentials.Warehouse,
-			"username":        provisionedAWSRedshift.Credentials.Username,
-			"hashed_password": provisionedAWSRedshift.Credentials.Password,
-		}
-	}
 	err = createRedShiftAWSCredentialsConfiguration(awsredshiftDatabaseCredentials, createdAWSRedShiftID, client)
 
 	if err != nil {
@@ -242,7 +222,7 @@ func createAWSRedShiftAccessToken(AWSRedShiftID string, client *KBCClient) error
 	}
 	return nil
 
-}
+} /*
 func provisionAWSRedShiftInstance(client *KBCClient) (provisionedAWSRedShiftResponse *ProvisionedAWSRedShiftResponse, err error) {
 	provisionAWSRedShiftBuffer := bytes.NewBufferString("{ \"type\": \"writer\" }")
 	provisionAWSRedShiftResponse, err := client.PostToSyrup("provisioning/redshift", provisionAWSRedShiftBuffer)
@@ -266,6 +246,7 @@ func provisionAWSRedShiftInstance(client *KBCClient) (provisionedAWSRedShiftResp
 
 	return &provisionedAWSRedshift, nil
 }
+*/
 func mapAWSRedShiftCredentialsToConfiguration(source map[string]interface{}) AWSRedshiftWriterDatabaseParameters {
 	databaseParameters := AWSRedshiftWriterDatabaseParameters{}
 
@@ -281,9 +262,7 @@ func mapAWSRedShiftCredentialsToConfiguration(source map[string]interface{}) AWS
 	if val, ok := source["schema"]; ok {
 		databaseParameters.Schema = val.(string)
 	}
-	if val, ok := source["warehouse"]; ok {
-		databaseParameters.Warehouse = val.(string)
-	}
+
 	if val, ok := source["username"]; ok {
 		databaseParameters.Username = val.(string)
 	}
@@ -323,7 +302,7 @@ func createRedShiftAWSCredentialsConfiguration(awsredshiftCredentials map[string
 func resourceKeboolaAWSRedShiftWriterRead(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] REading AWS RedShift Writer From Keboola")
 	client := meta.(*KBCClient)
-	getAWSRedShiftWriterResponse, err := client.GetFromStorage(fmt.Sprintf("storage/components/keboola.wr-redshift-v2", d.Id()))
+	getAWSRedShiftWriterResponse, err := client.GetFromStorage(fmt.Sprintf("storage/components/keboola.wr-redshift-v2/configs/%s", d.Id()))
 
 	if d.Id() == "" {
 		return nil
@@ -355,7 +334,6 @@ func resourceKeboolaAWSRedShiftWriterRead(d *schema.ResourceData, meta interface
 		dbParameters["port"] = databaseCredentials.Port
 		dbParameters["database"] = databaseCredentials.Database
 		dbParameters["schema"] = databaseCredentials.Schema
-		dbParameters["warehouse"] = databaseCredentials.Warehouse
 		dbParameters["username"] = databaseCredentials.Username
 		dbParameters["hashed_password"] = databaseCredentials.EncryptedPassword
 

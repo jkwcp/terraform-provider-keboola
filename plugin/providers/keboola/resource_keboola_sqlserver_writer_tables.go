@@ -10,6 +10,12 @@ import (
 	"github.com/plmwong/terraform-provider-keboola/plugin/providers/keboola/buffer"
 )
 
+//What does it do:
+//It creates a resource for sqlwriter talbe
+//When does it get called:
+//it gets called from the propvider when the terraform script calls the provider
+//Completed:
+// No
 func resourceKeboolaSQLServerWriterTables() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceKeboolaSQLServerWriterTablesCreate,
@@ -93,8 +99,17 @@ func resourceKeboolaSQLServerWriterTables() *schema.Resource {
 	}
 }
 
+//What does it do:
+// Its suppose to create the table for the the sql server componeent
+//When does it get called:
+// It gets called when the the resourceKeboolaSQLServerWriterTables calls it
+//Completed:
+// No
 func resourceKeboolaSQLServerWriterTablesCreate(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Creating SQL Server Writer Tables in Keboola")
+
+	client := meta.(*KBCClient)
+
 	writerID := d.Get("writer_id").(string)
 	tables := d.Get("table").(*schema.Set).List()
 
@@ -142,7 +157,6 @@ func resourceKeboolaSQLServerWriterTablesCreate(d *schema.ResourceData, meta int
 		mappedTables = append(mappedTables, mappedTable)
 		storageTables = append(storageTables, storageTable)
 	}
-	client := meta.(*KBCClient)
 
 	getWriterResponse, err := client.GetFromStorage(fmt.Sprintf("storage/components/keboola.wr-db-mssql-v2/configs/%s", writerID))
 
@@ -182,6 +196,13 @@ func resourceKeboolaSQLServerWriterTablesCreate(d *schema.ResourceData, meta int
 
 	return resourceKeboolaSQLServerTablesRead(d, meta)
 }
+
+//What does it do:
+// Its suppose to Read and compare what the terraform script has and what the keboola provider has.
+//When does it get called:
+// it gets called with update and read
+//Completed:
+// No
 func resourceKeboolaSQLServerTablesRead(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Reading SQL Serverr Writer Tables from Keboola.")
 	if d.Id() == "" {
@@ -240,11 +261,24 @@ func resourceKeboolaSQLServerTablesRead(d *schema.ResourceData, meta interface{}
 	return nil
 }
 
+//What does it do:
+// Its suppose to update the table
+//When does it get called:
+// when the resourceKeboolaSQLServerWriterTables gets called
+//Completed:
+// No
 func resourceKeboolaSQLServerWriterTablesUpdate(d *schema.ResourceData, meta interface{}) error {
 
 	return nil
 	//return resourceKeboolaSnowflakeWriterTablesRead(d, meta)
 }
+
+//What does it do:
+// it destory the terraform connection when the code block is mvoed from terraform
+//When does it get called:
+// From the resourceKeboolaSQLServerWriterTables
+//Completed:
+// No
 
 func resourceKeboolaSQLServerWriterTablesDelete(d *schema.ResourceData, meta interface{}) error {
 

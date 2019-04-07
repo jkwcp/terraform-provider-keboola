@@ -49,8 +49,9 @@ type SQLServerWriterStorage struct {
 	} `json:"input,omitempty"`
 }
 type SQLServerWriterConfiguration struct {
-	Parameters SQLServerWriterParameters `json:"parameters"`
-	Storage    SQLServerWriterStorage    `json:"storage,omitempty"`
+	Parameters    SQLServerWriterParameters `json:"parameters"`
+	Storage       SQLServerWriterStorage    `json:"storage,omitempty"`
+	Forward_token string                    `json:"forward_token"`
 }
 type SQLServerWriterDatabaseParameters struct {
 	HostName          string `json:"host"`
@@ -64,21 +65,35 @@ type SQLServerWriterDatabaseParameters struct {
 	Port              string `json:"port"`
 }
 
+type SQLServerWriterSSH struct {
+	Enabled bool   `json:"enabled"`
+	SSHHost string `json:"sshHost"`
+	User    string `json:"user"`
+	SSHPort string `json:"sshPort"`
+}
 type ProvisionSQLServerResponse struct {
 	Status      string `json:"status"`
 	Credentials struct {
-		HostName string `json:"hostname"`
-		Port     int    `json:"port"`
-		Instance string `json:"instance"`
-		Database string `json:"db"`
-		Username string `json:"user"`
-		Password string `json:"password"`
-		Driver   string `json:"driver"`
-		Version  string `json:"tdsVersion"`
-		//WorkspaceID int    `json:"workspaceId"`
+		ID          int    `json:"id"`
+		HostName    string `json:"hostname"`
+		Port        int    `json:"port"`
+		Instance    string `json:"instance"`
+		Database    string `json:"db"`
+		Username    string `json:"user"`
+		Password    string `json:"password"`
+		Driver      string `json:"driver"`
+		tdsVersion  string `json:"tdsVersion"`
+		WorkspaceID int    `json:"workspaceId"`
 	} `json:"credentials"`
 }
 
+//What does it do:
+// It  is the main function to the resource sql writer. It sees if the sql writer needs to Update create read and delete.
+// ALso it gives a map to what of what varibles are required or optional for keboola platform.
+//when does it get called:
+// It gets called when the keboola tf resource calls it.
+//Completed:
+// Yes
 func resourceKeboolaSQLServerWriter() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceKeboolaSQLServerWriterCreate,
@@ -137,11 +152,6 @@ func resourceKeboolaSQLServerWriter() *schema.Resource {
 							Required: true,
 							Default:  7.4,
 						},
-						"ssh_tunnel": {
-							Type:     schema.TypeBool,
-							Optional: true,
-							Default:  false,
-						},
 					},
 				},
 			},
@@ -153,6 +163,12 @@ func resourceKeboolaSQLServerWriter() *schema.Resource {
 	}
 }
 
+//What does it do:
+// It creates a Sql Server writer component on keboola and intializing the valribles you put to the kebools script.
+//When does it get called:
+// It called when the terraform script has a new resource name.
+//Completed:
+// Yes.
 func resourceKeboolaSQLServerWriterCreate(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Creating SQLServer Writer in Keboola.")
 
@@ -175,27 +191,7 @@ func resourceKeboolaSQLServerWriterCreate(d *schema.ResourceData, meta interface
 	}
 
 	SQLServerDatabaseCredentials := d.Get("sqlserver_db_parameters").(map[string]interface{})
-	/*
-		if d.Get("provision_new_instance").(bool) == true {
-			provisionedSQLServer, err := provisionSQLServerInstance(client)
 
-			if err != nil {
-				return err
-			}
-
-			SQLServerDatabaseCredentials = map[string]interface{}{
-				"hostname":        provisionedSQLServer.Credentials.HostName,
-				"port":            strconv.Itoa(provisionedSQLServer.Credentials.Port),
-				"database":        provisionedSQLServer.Credentials.Database,
-				"tdsVersion":      provisionedSQLServer.Credentials.Version,
-				"username":        provisionedSQLServer.Credentials.Username,
-				"hashed_password": provisionedSQLServer.Credentials.Password,
-				"instance":        provisionedSQLServer.Credentials.Instance,
-			}
-
-		}
-	*/
-	//Need to configure configuration
 	err = createSQLServerCredentialsConfiguration(SQLServerDatabaseCredentials, createSQLServerID, client)
 
 	if err != nil {
@@ -211,6 +207,12 @@ func resourceKeboolaSQLServerWriterCreate(d *schema.ResourceData, meta interface
 	return resourceKeboolaSQLServerWriterRead(d, meta)
 }
 
+//What does it do:
+// It creates an access token for your sql server writer
+//When does it get called:
+// when you create a new terraform resource name
+//Completed:
+// Yes.
 func createSQLServerAccessToken(SQLServerID string, client *KBCClient) error {
 	createAccessTokenForm := url.Values{}
 	createAccessTokenForm.Add("description", fmt.Sprintf("wrdbSqlServer_%s", SQLServerID))
@@ -226,6 +228,13 @@ func createSQLServerAccessToken(SQLServerID string, client *KBCClient) error {
 
 	return nil
 }
+
+//What does it do:
+// It creates a new configruation for your Sql sever and add the name and description you put for that configuration
+//When does it get called:
+//when the create method gets called it creates a new configuratiuon
+//Completed:
+// Yes.
 func createSQLServerWriterConfiguration(name string, description string, client *KBCClient) (createdSQLServerID string, err error) {
 	createWriterForm := url.Values{}
 	createWriterForm.Add("name", name)
@@ -251,32 +260,46 @@ func createSQLServerWriterConfiguration(name string, description string, client 
 	return string(createWriterResult.ID), nil
 }
 
-/*
-func provisionSQLServerInstance(client *KBCClient) (provisionedSQLServerResponse *ProvisionSQLServerResponse, err error) {
-	provisionSQLServerBuffer := bytes.NewBufferString("{ \"type\": \"writer\" }")
-	provisionSQLServerResponse, err := client.PostToSyrup("provisioning/snowflake", provisionSQLServerBuffer)
+//What does it do:
+// It creates a new configruation for your Sql sever and add the name and description you put for that configuration
+//When does it get called:
+//when the create method gets called it creates a new configuratiuon
+//Completed:
+// Yes.
+func createSQLServerCredentialsConfiguration(sqlserverCredentials map[string]interface{}, createdSQLServerID string, client *KBCClient) error {
 
-	if hasErrors(err, provisionSQLServerResponse) {
-		return nil, extractError(err, provisionSQLServerResponse)
-	}
+	sqlserverWriterConfiguration := SQLServerWriterConfiguration{}
 
-	var provisionedSQLServer ProvisionSQLServerResponse
+	sqlserverWriterConfiguration.Parameters.Database = mapSQLServerCredentialsToConfigurationDatabase(sqlserverCredentials)
 
-	provisionedSQLServerDecoder := json.NewDecoder(provisionSQLServerResponse.Body)
-	err = provisionedSQLServerDecoder.Decode(&provisionedSQLServer)
+	sqlserverWriterConfigurationJSON, err := json.Marshal(sqlserverWriterConfiguration)
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	if provisionSQLServerResponse.StatusCode < 200 || provisionSQLServerResponse.StatusCode > 299 {
-		return nil, fmt.Errorf("Unable to provision Sql Server instance (status code: %v)", provisionSQLServerResponse.StatusCode)
+	updateConfigurationRequestForm := url.Values{}
+	updateConfigurationRequestForm.Add("configuration", string(sqlserverWriterConfigurationJSON))
+	updateConfigurationRequestForm.Add("changeDescription", "Created database credentials")
+
+	updateConfigurationRequestBuffer := buffer.FromForm(updateConfigurationRequestForm)
+
+	updateConfigurationResponse, err := client.PutToStorage(fmt.Sprintf("storage/components/keboola.wr-db-mssql-v2/configs/%s", createdSQLServerID), updateConfigurationRequestBuffer)
+
+	if hasErrors(err, updateConfigurationResponse) {
+		return extractError(err, updateConfigurationResponse)
 	}
 
-	return &provisionedSQLServer, nil
+	return nil
 }
-*/
-func mapSQLServerCredentialsToConfiguration(source map[string]interface{}) SQLServerWriterDatabaseParameters {
+
+//What does it do:
+//Sql server credentials to configuration for the ddatabase.  puts all the values for credentials of the database in the
+//When does it get called:
+// It gets called for the resource update and the creation
+//Completed:
+// Yes.
+func mapSQLServerCredentialsToConfigurationDatabase(source map[string]interface{}) SQLServerWriterDatabaseParameters {
 	databaseParameters := SQLServerWriterDatabaseParameters{}
 
 	if val, ok := source["hostname"]; ok {
@@ -302,41 +325,18 @@ func mapSQLServerCredentialsToConfiguration(source map[string]interface{}) SQLSe
 	if val, ok := source["hashed_password"]; ok {
 		databaseParameters.EncryptedPassword = val.(string)
 	}
-	/*
-		if val, ok := source["ssh_tunnel"]; ok {
-			databaseParameters.EncryptedPassword = val.(string)
-		}
-	*/
+
 	databaseParameters.Driver = "mssql"
 
 	return databaseParameters
 }
-func createSQLServerCredentialsConfiguration(sqlserverCredentials map[string]interface{}, createdSQLServerID string, client *KBCClient) error {
 
-	sqlserverWriterConfiguration := SQLServerWriterConfiguration{}
-
-	sqlserverWriterConfiguration.Parameters.Database = mapSQLServerCredentialsToConfiguration(sqlserverCredentials)
-
-	sqlserverWriterConfigurationJSON, err := json.Marshal(sqlserverWriterConfiguration)
-
-	if err != nil {
-		return err
-	}
-
-	updateConfigurationRequestForm := url.Values{}
-	updateConfigurationRequestForm.Add("configuration", string(sqlserverWriterConfigurationJSON))
-	updateConfigurationRequestForm.Add("changeDescription", "Created database credentials")
-
-	updateConfigurationRequestBuffer := buffer.FromForm(updateConfigurationRequestForm)
-
-	updateConfigurationResponse, err := client.PutToStorage(fmt.Sprintf("storage/components/keboola.wr-db-mssql-v2/configs/%s", createdSQLServerID), updateConfigurationRequestBuffer)
-
-	if hasErrors(err, updateConfigurationResponse) {
-		return extractError(err, updateConfigurationResponse)
-	}
-
-	return nil
-}
+//What does it do:
+//Sql server Read allows you to see what is different from the terraform script and keboola platform and tells us if any changes where made
+//When does it get called:
+// It gets called for the resource update and the creation
+//Completed:
+// Yes.
 func resourceKeboolaSQLServerWriterRead(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Reading SQLServer Writers from Keboola.")
 
@@ -372,29 +372,32 @@ func resourceKeboolaSQLServerWriterRead(d *schema.ResourceData, meta interface{}
 		dbParameters := make(map[string]interface{})
 
 		databaseCredentials := sqlserverwriter.Configuration.Parameters.Database
-
 		dbParameters["hostname"] = databaseCredentials.HostName
 		dbParameters["port"] = databaseCredentials.Port
 		dbParameters["database"] = databaseCredentials.Database
 		dbParameters["tdsVersion"] = databaseCredentials.Version
 		dbParameters["instance"] = databaseCredentials.Instance
-
 		dbParameters["username"] = databaseCredentials.Username
 		dbParameters["hashed_password"] = databaseCredentials.EncryptedPassword
-
-		//dbParameters["ssh_tunnel"] = databaseCredentials.EncryptedPassword
 		d.Set("sqlserver_db_parameters", dbParameters)
 	}
 
 	return nil
 }
+
+//What does it do:
+//Sql server update updates the keboola platform when changes have been make.
+//When does it get called:
+// It  get called from the terraform script in the resources
+//Completed:
+// Yes.
 func resourceKeboolaSQLServerWriterUpdate(d *schema.ResourceData, meta interface{}) error {
 
 	log.Println("[INFO] Updating SQLServer Writer in Keboola.")
 
 	client := meta.(*KBCClient)
 
-	getWriterResponse, err := client.GetFromStorage(fmt.Sprintf(fmt.Sprintf("storage/components/keboola.wr-db-mssql-v2/configs/%s", d.Id())))
+	getWriterResponse, err := client.GetFromStorage(fmt.Sprintf("storage/components/keboola.wr-db-mssql-v2/configs/%s", d.Id()))
 
 	if hasErrors(err, getWriterResponse) {
 		return extractError(err, getWriterResponse)
@@ -412,7 +415,7 @@ func resourceKeboolaSQLServerWriterUpdate(d *schema.ResourceData, meta interface
 	sqlserverCredentials := d.Get("sqlserver_db_parameters").(map[string]interface{})
 
 	if d.Get("provision_new_instance").(bool) == false {
-		sqlserverwriter.Configuration.Parameters.Database = mapSQLServerCredentialsToConfiguration(sqlserverCredentials)
+		sqlserverwriter.Configuration.Parameters.Database = mapSQLServerCredentialsToConfigurationDatabase(sqlserverCredentials)
 	}
 
 	sqlserverConfigJSON, err := json.Marshal(sqlserverwriter.Configuration)
@@ -438,6 +441,12 @@ func resourceKeboolaSQLServerWriterUpdate(d *schema.ResourceData, meta interface
 	return resourceKeboolaSQLServerWriterRead(d, meta)
 }
 
+//What does it do:
+//It destory the information when the terraform block is removed
+//When does it get called:
+// when block of the terraform script is removed
+//Completed:
+// Yes.
 func resourceKeboolaSQLServerWriterDelete(d *schema.ResourceData, meta interface{}) error {
 
 	log.Printf("[INFO] Deleting SQL Server Writer in Keboola: %s", d.Id())
