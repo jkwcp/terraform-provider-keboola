@@ -11,10 +11,16 @@ import (
 )
 
 //region Keboola API Contracts
+
+//SnowflakeExtractorParameters
+//Snowflake Extractor's configuration parameters that includes database credentials and sourcing tables
+//Incomplete: need to add the sourcing tables
 type SnowflakeExtractorParameters struct {
 	Database SnowflakeExtractorDatabaseParameters `json:"db"`
 }
 
+//SnowflakeExtractorDatabaseParameters: configurations on sourcing database
+//Complete
 type SnowflakeExtractorDatabaseParameters struct {
 	HostName          string `json:"host"`
 	Database          string `json:"database"`
@@ -27,10 +33,14 @@ type SnowflakeExtractorDatabaseParameters struct {
 	Warehouse         string `json:"warehouse"`
 }
 
+//SnowflakeExtractionConfiguration: component configuration
+//Complete
 type SnowflakeExtractorConfiguration struct {
 	Parameters SnowflakeExtractorParameters `json:"parameters"`
 }
 
+//Snowflake Extractor
+//Complete
 type SnowFlakeExtractor struct {
 	ID            string                          `json:"id"`
 	Name          string                          `json:"name"`
@@ -42,10 +52,10 @@ type SnowFlakeExtractor struct {
 
 func resourceKeboolaSnowlakeExtractor() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceKeboolaSnowFlakeExtractorCreate,
-		Read:   resourceKeboolaSnowFlakeExtractorRead,
-		Update: resourceKeboolaSnowFlakeExtractorUpdate,
-		Delete: resourceKeboolaSnowFlakeExtractorDelete,
+		Create: resourceKeboolaSnowflakeExtractorCreate,
+		Read:   resourceKeboolaSnowflakeExtractorRead,
+		Update: resourceKeboolaSnowflakeExtractorUpdate,
+		Delete: resourceKeboolaSnowflakeExtractorDelete,
 
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -99,7 +109,10 @@ func resourceKeboolaSnowlakeExtractor() *schema.Resource {
 	}
 }
 
-func resourceKeboolaSnowFlakeExtractorCreate(d *schema.ResourceData, meta interface{}) error {
+//Creates the SnowflakeExtractor on Keboola Connection
+//Called when new Snowflake extractor added to the terraform
+//Incomplete: needs to add the sourcing tables while create the component
+func resourceKeboolaSnowflakeExtractorCreate(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Creating Google Drive Extractor in Keboola.")
 
 	client := meta.(*KBCClient) //
@@ -128,10 +141,13 @@ func resourceKeboolaSnowFlakeExtractorCreate(d *schema.ResourceData, meta interf
 
 	d.Partial(false)
 
-	return resourceKeboolaSnowFlakeExtractorRead(d, meta)
+	return resourceKeboolaSnowflakeExtractorRead(d, meta)
 
 }
 
+//Initial component, add component's name and description to configs and return the component's Id
+//Called by resourceKeboolaSnowflakeExtractorCreate
+//Complete
 func createSnowflakeExtractorConfiguration(name string, description string, client *KBCClient) (createdSnowflakeExtractorID string, err error) {
 	createExtractorForm := url.Values{}
 	createExtractorForm.Add("name", name)
@@ -155,6 +171,38 @@ func createSnowflakeExtractorConfiguration(name string, description string, clie
 	return string(createExtractorResult.ID), nil
 }
 
+//Create database credentials
+//Called by resourceKeboolaSnowflakeExtractorCreate
+//Complete
+func createSnowflakeExtractorDatabaseConfiguration(databaseConfiguration map[string]interface{}, createdSnowflakeID string, client *KBCClient) error {
+	snowflakeExtractorConfiguration := SnowflakeExtractorConfiguration{}
+
+	snowflakeExtractorConfiguration.Parameters.Database = mapCredentialsToConfiguration(databaseConfiguration)
+
+	snowflakeWriterConfigurationJSON, err := json.Marshal(snowflakeExtractorConfiguration)
+
+	if err != nil {
+		return err
+	}
+
+	updateConfigurationRequestForm := url.Values{}
+	updateConfigurationRequestForm.Add("configuration", string(snowflakeWriterConfigurationJSON))
+	updateConfigurationRequestForm.Add("changeDescription", "Created database credentials")
+
+	updateConfigurationRequestBuffer := buffer.FromForm(updateConfigurationRequestForm)
+
+	updateConfigurationResponse, err := client.PutToStorage(fmt.Sprintf("storage/components/keboola.ex-db-snowflake/configs/%s", createdSnowflakeID), updateConfigurationRequestBuffer)
+
+	if hasErrors(err, updateConfigurationResponse) {
+		return extractError(err, updateConfigurationResponse)
+	}
+
+	return nil
+}
+
+//Maps entries on terraform to database configurations
+//Called by createSnowflakeExtractorDatabaseConfiguration
+//Complete
 func mapCredentialsToConfiguration(source map[string]interface{}) SnowflakeExtractorDatabaseParameters {
 	databaseParameters := SnowflakeExtractorDatabaseParameters{}
 
@@ -185,33 +233,11 @@ func mapCredentialsToConfiguration(source map[string]interface{}) SnowflakeExtra
 	return databaseParameters
 }
 
-func createSnowflakeExtractorDatabaseConfiguration(databaseConfiguration map[string]interface{}, createdSnowflakeID string, client *KBCClient) error {
-	snowflakeExtractorConfiguration := SnowflakeExtractorConfiguration{}
-
-	snowflakeExtractorConfiguration.Parameters.Database = mapCredentialsToConfiguration(databaseConfiguration)
-
-	snowflakeWriterConfigurationJSON, err := json.Marshal(snowflakeExtractorConfiguration)
-
-	if err != nil {
-		return err
-	}
-
-	updateConfigurationRequestForm := url.Values{}
-	updateConfigurationRequestForm.Add("configuration", string(snowflakeWriterConfigurationJSON))
-	updateConfigurationRequestForm.Add("changeDescription", "Created database credentials")
-
-	updateConfigurationRequestBuffer := buffer.FromForm(updateConfigurationRequestForm)
-
-	updateConfigurationResponse, err := client.PutToStorage(fmt.Sprintf("storage/components/keboola.ex-db-snowflake/configs/%s", createdSnowflakeID), updateConfigurationRequestBuffer)
-
-	if hasErrors(err, updateConfigurationResponse) {
-		return extractError(err, updateConfigurationResponse)
-	}
-
-	return nil
-}
-
-func resourceKeboolaSnowFlakeExtractorRead(d *schema.ResourceData, meta interface{}) error {
+//Reads component configuration from Keboola Connection and compare with local Terraforms,
+//updates terraform if changes have been made on Keboola Platform
+//Called when update/create is executed
+//Complete
+func resourceKeboolaSnowflakeExtractorRead(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Reading SnowFlake Extractor from Keboola.")
 
 	client := meta.(*KBCClient)
@@ -246,8 +272,11 @@ func resourceKeboolaSnowFlakeExtractorRead(d *schema.ResourceData, meta interfac
 	return nil
 }
 
-func resourceKeboolaSnowFlakeExtractorUpdate(d *schema.ResourceData, meta interface{}) error {
-	log.Println("[INFO] Updating Snowflake Writer in Keboola.")
+//Updates component configuration on Keboola Connection
+//Called when local terraform was changed
+//Complete
+func resourceKeboolaSnowflakeExtractorUpdate(d *schema.ResourceData, meta interface{}) error {
+	log.Println("[INFO] Updating Snowflake Extractor in Keboola.")
 
 	client := meta.(*KBCClient)
 
@@ -269,7 +298,7 @@ func resourceKeboolaSnowFlakeExtractorUpdate(d *schema.ResourceData, meta interf
 	updateCredentialsForm := url.Values{}
 	updateCredentialsForm.Add("name", d.Get("name").(string))
 	updateCredentialsForm.Add("description", d.Get("description").(string))
-	updateCredentialsForm.Add("changeDescription", "Updated Snowflake Writer configuration via Terraform")
+	updateCredentialsForm.Add("changeDescription", "Updated Snowflake Extractor configuration via Terraform")
 
 	updateCredentialsBuffer := buffer.FromForm(updateCredentialsForm)
 	updateCredentialsResponse, err := client.PutToStorage(fmt.Sprintf("storage/components/keboola.ex-db-snowflake/configs/%s", d.Id()), updateCredentialsBuffer)
@@ -278,10 +307,13 @@ func resourceKeboolaSnowFlakeExtractorUpdate(d *schema.ResourceData, meta interf
 		return extractError(err, updateCredentialsResponse)
 	}
 
-	return resourceKeboolaSnowFlakeExtractorRead(d, meta)
+	return resourceKeboolaSnowflakeExtractorRead(d, meta)
 }
 
-func resourceKeboolaSnowFlakeExtractorDelete(d *schema.ResourceData, meta interface{}) error {
+//Destroy a Snowflake extractor
+//Called when the components is removed from terraform
+//Complete
+func resourceKeboolaSnowflakeExtractorDelete(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[INFO] Deleting Snowflake Extractor in Keboola: %s", d.Id())
 
 	client := meta.(*KBCClient)
