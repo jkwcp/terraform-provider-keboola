@@ -12,12 +12,24 @@ import (
 
 //region Keboola API Contracts
 
+type TableauWriterTableItem struct {
+	Name         string `json:"name"`
+	Type         string `json:"type"`
+	Size         string `json:"size"`
+	IsNullable   bool   `json:"nullable"`
+	DefaultValue string `json:"default"`
+}
+
+//Structure of the TableauWriter
 type TableauWriter struct {
 	ID          string `json:"id,omitempty"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 }
 
+//Specifies the Create, Read, Update, and Delete functions for the Tableau Writer
+//Specified in and called when provider.go is ran
+//Functionality is complete
 func resourceKeboolaTableauWriter() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceKeboolaTableauWriterCreate,
@@ -29,10 +41,6 @@ func resourceKeboolaTableauWriter() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			// "writer_id": {
-			// 	Type:     schema.TypeString,
-			// 	Required: true,
-			// },
 			"name": {
 				Type:     schema.TypeString,
 				Required: true,
@@ -45,6 +53,9 @@ func resourceKeboolaTableauWriter() *schema.Resource {
 	}
 }
 
+//Creates the Tableau Writer resource in Keboola Connection project
+//Called from main.tf using "terraform apply" command
+//Function is completed
 func resourceKeboolaTableauWriterCreate(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Creating Tableau Writer in Keboola.")
 
@@ -61,6 +72,9 @@ func resourceKeboolaTableauWriterCreate(d *schema.ResourceData, meta interface{}
 	return resourceKeboolaTableauWriterRead(d, meta)
 }
 
+//Configures the Tableau Writer resource in Keboola Connection project
+//Called from main.tf using "terraform apply" command along with resourceKeboolaTableauWriterCreate
+//Function is functional but more configurations can be added
 func createTableauWriterConfiguration(name string, description string, client *KBCClient) (createdID string, err error) {
 	form := url.Values{}
 	form.Add("name", name)
@@ -90,6 +104,9 @@ func createTableauWriterConfiguration(name string, description string, client *K
 	return string(createRes.ID), nil
 }
 
+//Reads the current Tableau Writer within the Keboola project. If the configuration is different, updates it to the configurations specified in main.tf
+//Called from main.tf using "terraform apply" command
+//Function is completed
 func resourceKeboolaTableauWriterRead(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Reading Tableau Writers from Keboola.")
 
@@ -123,6 +140,9 @@ func resourceKeboolaTableauWriterRead(d *schema.ResourceData, meta interface{}) 
 	return nil
 }
 
+//Updates the Tableau Writer resource in Keboola Connection project
+//Called from main.tf using "terraform apply" command
+//Function is completed
 func resourceKeboolaTableauWriterUpdate(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Updating Tableau Writer in Keboola.")
 
@@ -154,6 +174,9 @@ func resourceKeboolaTableauWriterUpdate(d *schema.ResourceData, meta interface{}
 	return resourceKeboolaTableauWriterRead(d, meta)
 }
 
+//Deletes the Tableau Writer resource in Keboola Connection project when the resource specifications are removed from main.tf
+//Called from main.tf using "terraform apply" command
+//Function is completed
 func resourceKeboolaTableauWriterDelete(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[INFO] Deleting Tableau Writer in Keboola: %s", d.Id())
 
