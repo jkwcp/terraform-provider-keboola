@@ -76,12 +76,26 @@ resource "keboola_aws_s3bucket_writer" "DemoS3Bucket" {
 
 resource "keboola_dropbox_writer" "DemoDropBoxWriter" {
   name  = "Drop Box"
-  description = "AndyTest_Dropbox"
+  description = "Demo_Dropbox"
 }
 
 resource "keboola_tableau_writer" "DemoTableauWriter" {
   name  = "Tableau"
-  description = "AndyTest_Tableau"
+  description = "Demo_Tableau"
+}
+
+resource "keboola_sqlserver_writer" "TermProject2" {
+  name  = "Sql Server Writer"
+  description = "This is an example of SQL Server "
+  
+  sqlserver_db_parameters{
+    hostname = "jontestdb.database.windows.net"
+    port = "1433"
+    username = "ADP"
+    hashed_password = "#2702norland"
+    database = "jondbtest"
+    tdsVersion = "7.4"
+  }
 }
 
 
