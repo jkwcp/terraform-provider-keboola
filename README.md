@@ -10,7 +10,24 @@ This temproray git repo is pulled from https://github.com/plmwong/terraform-prov
 
 This is a custom terraform provider for managing common resources within the Keboola Connection (KBC) platform, such as Transformations, Orchestrations, Writers etc.
 
-## Supported Resources
+## BCIT - Keboola Current Development
+
+Currently, the following KBC resources are being developed for configuration via `terraform`:
+
+* `keboola_aws_redshift_writer`
+* `keboola_aws_redshift_writer_table`
+* `keboola_sqlserver_writer`
+* `keboola_googledrive_extractor`
+* `keboola_awsredshift_writer`
+* `keboola_snowflake_extractor`
+* `keboola_tableau_writer`
+* `keboola_dropbox_writer`
+
+These components can be created in the Keboola Connection platform and have credentials put in place but do not have table creation yet.
+
+Todo: Create a generic table creation for all (or most) components
+
+## Supported Resources - Created by PayByPhone
 
 Currently, the following KBC resources are supported (or partially supported) for configuration via `terraform`:
 
@@ -68,3 +85,6 @@ raise a pull request so it can be reviewed and merged.
 
 ## License
 `terraform-provider-keboola` is provided *"as-is"* under the [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0).
+
+
+
