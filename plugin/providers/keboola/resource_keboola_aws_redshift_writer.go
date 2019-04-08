@@ -387,9 +387,7 @@ func resourceKeboolaAWSRedShiftWriterUpdate(d *schema.ResourceData, meta interfa
 
 	awsredshiftCredentials := d.Get("redshift_wr_parameters").(map[string]interface{})
 
-	if d.Get("provision_new_instance").(bool) == false {
-		awsredshiftWriter.Configuration.Parameters.Database = mapAWSRedShiftCredentialsToConfiguration(awsredshiftCredentials)
-	}
+	awsredshiftWriter.Configuration.Parameters.Database = mapAWSRedShiftCredentialsToConfiguration(awsredshiftCredentials)
 
 	awsredshiftConfigJSON, err := json.Marshal(awsredshiftWriter.Configuration)
 
