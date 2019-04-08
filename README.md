@@ -22,6 +22,7 @@ Currently, the following KBC resources are being developed for configuration via
 * `keboola_snowflake_extractor`
 * `keboola_tableau_writer`
 * `keboola_dropbox_writer`
+* `keboola_s3bucket_writer`
 
 These components can be created in the Keboola Connection platform and have credentials put in place but do not have table creation yet.
 
