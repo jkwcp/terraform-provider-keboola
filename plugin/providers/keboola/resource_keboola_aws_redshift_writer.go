@@ -81,6 +81,13 @@ type AWSRedShiftWriter struct {
 	Configuration AWSRedShiftWriterConfiguration `json:"configuration"`
 }
 
+//What does it do:
+// It  is the main function to the resource AWSRedShfitWriter. It sees if the sql writer needs to Update create read and delete.
+// ALso it gives a map to what of what varibles are required or optional for keboola platform.
+//when does it get called:
+// It gets called when the keboola tf resource calls it.
+//Completed:
+// Yes
 func resourceKeboolaAWSRedshiftWriter() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceKeboolaAWSRedshiftWriterCreate,
@@ -150,6 +157,12 @@ func resourceKeboolaAWSRedshiftWriter() *schema.Resource {
 	}
 }
 
+//What does it do:
+// It creates a AWS Redshift writer component on keboola and intializing the valribles you put to the kebools script.
+//When does it get called:
+// It called when the terraform script has a new resource name.
+//Completed:
+// Yes.
 func resourceKeboolaAWSRedshiftWriterCreate(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Creating AWSRedShift Writer in Keboola")
 	client := meta.(*KBCClient)
@@ -208,6 +221,12 @@ func createAWSRedShiftWriterConfiguration(name string, description string, clien
 	return string(createWriterResult.ID), nil
 
 }
+
+//What does it do:
+// It creates an access token for your aws RedShift writer
+//When does it get called:
+// when you create a new terraform resource name
+//Completed:
 func createAWSRedShiftAccessToken(AWSRedShiftID string, client *KBCClient) error {
 	createAccessTokenForm := url.Values{}
 	createAccessTokenForm.Add("description", fmt.Sprintf("wrredshift_%s", AWSRedShiftID))
@@ -222,31 +241,14 @@ func createAWSRedShiftAccessToken(AWSRedShiftID string, client *KBCClient) error
 	}
 	return nil
 
-} /*
-func provisionAWSRedShiftInstance(client *KBCClient) (provisionedAWSRedShiftResponse *ProvisionedAWSRedShiftResponse, err error) {
-	provisionAWSRedShiftBuffer := bytes.NewBufferString("{ \"type\": \"writer\" }")
-	provisionAWSRedShiftResponse, err := client.PostToSyrup("provisioning/redshift", provisionAWSRedShiftBuffer)
-
-	if hasErrors(err, provisionAWSRedShiftResponse) {
-		return nil, extractError(err, provisionAWSRedShiftResponse)
-	}
-
-	var provisionedAWSRedshift ProvisionedAWSRedShiftResponse
-
-	provisionedAWSRedshiftDecoder := json.NewDecoder(provisionAWSRedShiftResponse.Body)
-	err = provisionedAWSRedshiftDecoder.Decode(&provisionedAWSRedshift)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if provisionAWSRedShiftResponse.StatusCode < 200 || provisionAWSRedShiftResponse.StatusCode > 299 {
-		return nil, fmt.Errorf("Unable to provision AWS RedShift instance (status code: %v)", provisionAWSRedShiftResponse.StatusCode)
-	}
-
-	return &provisionedAWSRedshift, nil
 }
-*/
+
+//What does it do:
+//AWS Redshift credentials to configuration for the ddatabase.  puts all the values for credentials of the database in the
+//When does it get called:
+// It gets called for the resource update and the creation
+//Completed:
+// Yes.
 func mapAWSRedShiftCredentialsToConfiguration(source map[string]interface{}) AWSRedshiftWriterDatabaseParameters {
 	databaseParameters := AWSRedshiftWriterDatabaseParameters{}
 
@@ -274,6 +276,13 @@ func mapAWSRedShiftCredentialsToConfiguration(source map[string]interface{}) AWS
 
 	return databaseParameters
 }
+
+//What does it do:
+// It creates a new configruation for your AWS Redshift and add the name and description you put for that configuration
+//When does it get called:
+//when the create method gets called it creates a new configuratiuon
+//Completed:
+// Yes.
 func createRedShiftAWSCredentialsConfiguration(awsredshiftCredentials map[string]interface{}, createdawsredshiftID string, client *KBCClient) error {
 	awsredshiftWriterConfiguration := AWSRedShiftWriterConfiguration{}
 
@@ -299,6 +308,13 @@ func createRedShiftAWSCredentialsConfiguration(awsredshiftCredentials map[string
 
 	return nil
 }
+
+//What does it do:
+//Aws Redshift Read allows you to see what is different from the terraform script and keboola platform and tells us if any changes where made
+//When does it get called:
+// It gets called for the resource update and the creation
+//Completed:
+// Yes.
 func resourceKeboolaAWSRedShiftWriterRead(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] REading AWS RedShift Writer From Keboola")
 	client := meta.(*KBCClient)
@@ -343,6 +359,12 @@ func resourceKeboolaAWSRedShiftWriterRead(d *schema.ResourceData, meta interface
 	return nil
 }
 
+//What does it do:
+//AWS Redshift update updates the keboola platform when changes have been make.
+//When does it get called:
+// It  get called from the terraform script in the resources
+//Completed:
+// Yes.
 func resourceKeboolaAWSRedShiftWriterUpdate(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Updating AWS RedShift Writer in Keboola.")
 
@@ -391,6 +413,13 @@ func resourceKeboolaAWSRedShiftWriterUpdate(d *schema.ResourceData, meta interfa
 
 	return resourceKeboolaAWSRedShiftWriterRead(d, meta)
 }
+
+//What does it do:
+//It destory the information when the terraform block is removed
+//When does it get called:
+// when block of the terraform script is removed
+//Completed:
+// Yes.
 func resourceKeboolaAWSRedShiftWriterDelete(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[INFO] Deleting AWS Redshift Writer in Keboola: %s", d.Id())
 
