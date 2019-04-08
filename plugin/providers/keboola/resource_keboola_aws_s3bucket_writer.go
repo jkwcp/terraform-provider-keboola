@@ -337,7 +337,7 @@ func resourceKeboolaAWSs3WriterUpdate(d *schema.ResourceData, meta interface{}) 
 //When does it get called:
 // when block of the terraform script is removed
 //Completed:
-// Yes.
+// Yes
 func resourceKeboolaAWSs3WriterDelete(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[INFO] Deleting AWS s3 Writer in Keboola: %s", d.Id())
 
