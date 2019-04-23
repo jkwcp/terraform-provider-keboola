@@ -49,9 +49,8 @@ type SQLServerWriterStorage struct {
 	} `json:"input,omitempty"`
 }
 type SQLServerWriterConfiguration struct {
-	Parameters    SQLServerWriterParameters `json:"parameters"`
-	Storage       SQLServerWriterStorage    `json:"storage,omitempty"`
-	Forward_token string                    `json:"forward_token"`
+	Parameters SQLServerWriterParameters `json:"parameters"`
+	Storage    SQLServerWriterStorage    `json:"storage,omitempty"`
 }
 type SQLServerWriterDatabaseParameters struct {
 	HostName          string `json:"host"`
@@ -367,7 +366,6 @@ func resourceKeboolaSQLServerWriterRead(d *schema.ResourceData, meta interface{}
 	d.Set("id", sqlserverwriter.ID)
 	d.Set("name", sqlserverwriter.Name)
 	d.Set("description", sqlserverwriter.Description)
-
 	if d.Get("provision_new_database") == false {
 		dbParameters := make(map[string]interface{})
 
@@ -381,7 +379,6 @@ func resourceKeboolaSQLServerWriterRead(d *schema.ResourceData, meta interface{}
 		dbParameters["hashed_password"] = databaseCredentials.EncryptedPassword
 		d.Set("sqlserver_db_parameters", dbParameters)
 	}
-
 	return nil
 }
 
@@ -414,9 +411,7 @@ func resourceKeboolaSQLServerWriterUpdate(d *schema.ResourceData, meta interface
 
 	sqlserverCredentials := d.Get("sqlserver_db_parameters").(map[string]interface{})
 
-	if d.Get("provision_new_instance").(bool) == false {
-		sqlserverwriter.Configuration.Parameters.Database = mapSQLServerCredentialsToConfigurationDatabase(sqlserverCredentials)
-	}
+	sqlserverwriter.Configuration.Parameters.Database = mapSQLServerCredentialsToConfigurationDatabase(sqlserverCredentials)
 
 	sqlserverConfigJSON, err := json.Marshal(sqlserverwriter.Configuration)
 
