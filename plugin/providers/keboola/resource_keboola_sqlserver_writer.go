@@ -32,7 +32,9 @@ type SQLServerWriter struct {
 	Description   string                       `json:"description"`
 	Configuration SQLServerWriterConfiguration `json:"configuration"`
 }
-
+type SQLServerWriterSSHParameters struct {
+	SQLServerSSH SQLServerWriterSSH `json:"ssh"`
+}
 type SQLServerWriterParameters struct {
 	Database SQLServerWriterDatabaseParameters `json:"db"`
 	Tables   []SQLServerWriterTable            `json:"tables,omitempty"`
@@ -53,19 +55,20 @@ type SQLServerWriterConfiguration struct {
 	Storage    SQLServerWriterStorage    `json:"storage,omitempty"`
 }
 type SQLServerWriterDatabaseParameters struct {
-	HostName          string `json:"host"`
-	Database          string `json:"database"`
-	Instance          string `json:"instance"`
-	Password          string `json:"password,omitempty"`
-	EncryptedPassword string `json:"#password,omitempty"`
-	Username          string `json:"user"`
-	Driver            string `json:"driver"`
-	Version           string `json:"tdsVersion"`
-	Port              string `json:"port"`
+	HostName          string             `json:"host"`
+	Database          string             `json:"database"`
+	Instance          string             `json:"instance"`
+	Password          string             `json:"password,omitempty"`
+	EncryptedPassword string             `json:"#password,omitempty"`
+	Username          string             `json:"user"`
+	Driver            string             `json:"driver"`
+	Version           string             `json:"tdsVersion"`
+	Port              string             `json:"port"`
+	SSH               SQLServerWriterSSH `json:"ssh"`
 }
 
 type SQLServerWriterSSH struct {
-	Enabled bool   `json:"enabled"`
+	Enabled string `json:"enabled"`
 	SSHHost string `json:"sshHost"`
 	User    string `json:"user"`
 	SSHPort string `json:"sshPort"`
@@ -151,6 +154,32 @@ func resourceKeboolaSQLServerWriter() *schema.Resource {
 							Required: true,
 							Default:  7.4,
 						},
+						"sqlserver_db_parameters": {
+							Type:     schema.TypeMap,
+							Optional: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+						"enabled": {
+							Type:     schema.TypeString,
+							Optional: true,
+						}, "sshHost": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"user": {
+							Type:     schema.TypeInt,
+							Optional: true,
+						},
+						"sshPort": {
+							Type:     schema.TypeString,
+							Required: true,
+						}
+					}
+				}
+			}
+				
+					
+						},
 					},
 				},
 			},
@@ -190,6 +219,7 @@ func resourceKeboolaSQLServerWriterCreate(d *schema.ResourceData, meta interface
 	}
 
 	SQLServerDatabaseCredentials := d.Get("sqlserver_db_parameters").(map[string]interface{})
+	//	SQLServerSSH := d.Get("sqlserver_ssh_parameters").(map[string]interface{})
 
 	err = createSQLServerCredentialsConfiguration(SQLServerDatabaseCredentials, createSQLServerID, client)
 
@@ -324,7 +354,18 @@ func mapSQLServerCredentialsToConfigurationDatabase(source map[string]interface{
 	if val, ok := source["hashed_password"]; ok {
 		databaseParameters.EncryptedPassword = val.(string)
 	}
-
+	if val, ok := source["enabled"]; ok {
+		databaseParameters.SSH.Enabled = val.(string)
+	}
+	if val, ok := source["sshHost"]; ok {
+		databaseParameters.SSH.SSHHost = val.(string)
+	}
+	if val, ok := source["user"]; ok {
+		databaseParameters.SSH.User = val.(string)
+	}
+	if val, ok := source["sshPort"]; ok {
+		databaseParameters.SSH.SSHPort = val.(string)
+	}
 	databaseParameters.Driver = "mssql"
 
 	return databaseParameters
@@ -368,7 +409,6 @@ func resourceKeboolaSQLServerWriterRead(d *schema.ResourceData, meta interface{}
 	d.Set("description", sqlserverwriter.Description)
 	if d.Get("provision_new_database") == false {
 		dbParameters := make(map[string]interface{})
-
 		databaseCredentials := sqlserverwriter.Configuration.Parameters.Database
 		dbParameters["hostname"] = databaseCredentials.HostName
 		dbParameters["port"] = databaseCredentials.Port
@@ -377,6 +417,10 @@ func resourceKeboolaSQLServerWriterRead(d *schema.ResourceData, meta interface{}
 		dbParameters["instance"] = databaseCredentials.Instance
 		dbParameters["username"] = databaseCredentials.Username
 		dbParameters["hashed_password"] = databaseCredentials.EncryptedPassword
+		dbParameters["enabled"] = databaseCredentials.SSH.Enabled
+		dbParameters["sshPort"] = databaseCredentials.SSH.SSHPort
+		dbParameters["user"] = databaseCredentials.SSH.User
+		dbParameters["sshhost"] = databaseCredentials.SSH.SSHHost
 		d.Set("sqlserver_db_parameters", dbParameters)
 	}
 	return nil
