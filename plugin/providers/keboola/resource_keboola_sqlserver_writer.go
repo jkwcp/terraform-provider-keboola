@@ -117,6 +117,10 @@ func resourceKeboolaSQLServerWriter() *schema.Resource {
 				Default:  true,
 				ForceNew: true,
 			},
+			"description": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 			"sqlserver_db_parameters": {
 				Type:     schema.TypeMap,
 				Optional: true,
@@ -159,33 +163,26 @@ func resourceKeboolaSQLServerWriter() *schema.Resource {
 							Optional: true,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
-						"enabled": {
-							Type:     schema.TypeString,
-							Optional: true,
-						}, "sshHost": {
-							Type:     schema.TypeString,
-							Optional: true,
-						},
-						"user": {
-							Type:     schema.TypeInt,
-							Optional: true,
-						},
-						"sshPort": {
-							Type:     schema.TypeString,
-							Required: true,
-						}
-					}
-				}
-			}
-				
-					
+									"enabled": {
+										Type:     schema.TypeString,
+										Optional: true,
+									}, "sshHost": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+									"user": {
+										Type:     schema.TypeInt,
+										Optional: true,
+									},
+									"sshPort": {
+										Type:     schema.TypeString,
+										Required: true,
+									},
+								},
+							},
 						},
 					},
 				},
-			},
-			"description": {
-				Type:     schema.TypeString,
-				Optional: true,
 			},
 		},
 	}
