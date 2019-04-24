@@ -33,9 +33,7 @@ type SQLServerWriter struct {
 	Description   string                       `json:"description"`
 	Configuration SQLServerWriterConfiguration `json:"configuration"`
 }
-type SQLServerWriterSSHParameters struct {
-	SQLServerSSH SQLServerWriterSSH `json:"ssh"`
-}
+
 type SQLServerWriterParameters struct {
 	Database SQLServerWriterDatabaseParameters `json:"db"`
 	Tables   []SQLServerWriterTable            `json:"tables,omitempty"`
