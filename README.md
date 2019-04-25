@@ -26,7 +26,10 @@ Currently, the following KBC resources are being developed for configuration via
 
 These components can be created in the Keboola Connection platform and have credentials put in place but do not have table creation yet.
 
-Todo: Create a generic table creation for all (or most) components
+Todo: 
+1. Create a generic extractor table provider.
+2. Complete all exsiting providers.
+3. Other common components will be developed in second term (Starting end of April)
 
 ## Supported Resources - Created by PayByPhone
 

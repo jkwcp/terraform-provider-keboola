@@ -6,20 +6,22 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"strconv"
 
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/plmwong/terraform-provider-keboola/plugin/providers/keboola/buffer"
 )
 
 type AWSRedshiftWriterDatabaseParameters struct {
-	HostName          string `json:"host"`
-	Database          string `json:"database"`
-	Password          string `json:"password,omitempty"`
-	EncryptedPassword string `json:"#password,omitempty"`
-	Username          string `json:"user"`
-	Schema            string `json:"schema"`
-	Port              string `json:"port"`
-	Driver            string `json:"driver"`
+	HostName          string         `json:"host"`
+	Database          string         `json:"database"`
+	Password          string         `json:"password,omitempty"`
+	EncryptedPassword string         `json:"#password,omitempty"`
+	Username          string         `json:"user"`
+	Schema            string         `json:"schema"`
+	Port              string         `json:"port"`
+	Driver            string         `json:"driver"`
+	SSH               AWSRedShiftSSH `json:"ssh"`
 }
 
 type AWSRedShiftWriterTableItem struct {
@@ -60,6 +62,12 @@ type AWSRedShiftWriterConfiguration struct {
 	Parameters AWSRedShiftWriterParameters `json:"parameters"`
 	Storage    AWSRedShiftWriterStorage    `json:"storage,omitempty"`
 }
+type AWSRedShiftSSH struct {
+	Enabled bool   `json:"enabled"`
+	SSHHost string `json:"sshHost"`
+	User    string `json:"user"`
+	SSHPort string `json:"sshPort"`
+}
 type ProvisionedAWSRedShiftResponse struct {
 	Status      string `json:"status"`
 	Credentials struct {
@@ -77,7 +85,7 @@ type ProvisionedAWSRedShiftResponse struct {
 type AWSRedShiftWriter struct {
 	ID            string                         `json:"id,omitempty"`
 	Name          string                         `json:"name"`
-	Description   string                         `json:"id,description"`
+	Description   string                         `json:"description"`
 	Configuration AWSRedShiftWriterConfiguration `json:"configuration"`
 }
 
@@ -144,6 +152,21 @@ func resourceKeboolaAWSRedshiftWriter() *schema.Resource {
 							Required:     true,
 							Sensitive:    true,
 							ValidateFunc: validateKBCEncryptedValue,
+						},
+						"enabled": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						}, "sshHost": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"user": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"sshPort": {
+							Type:     schema.TypeString,
+							Optional: true,
 						},
 					},
 				},
@@ -249,9 +272,10 @@ func createAWSRedShiftAccessToken(AWSRedShiftID string, client *KBCClient) error
 // It gets called for the resource update and the creation
 //Completed:
 // Yes.
-func mapAWSRedShiftCredentialsToConfiguration(source map[string]interface{}) AWSRedshiftWriterDatabaseParameters {
+func mapAWSRedShiftCredentialsToConfiguration(source map[string]interface{}) (AWSRedshiftWriterDatabaseParameters, error) {
 	databaseParameters := AWSRedshiftWriterDatabaseParameters{}
-
+	var err error
+	err = nil
 	if val, ok := source["hostname"]; ok {
 		databaseParameters.HostName = val.(string)
 	}
@@ -271,10 +295,23 @@ func mapAWSRedShiftCredentialsToConfiguration(source map[string]interface{}) AWS
 	if val, ok := source["hashed_password"]; ok {
 		databaseParameters.EncryptedPassword = val.(string)
 	}
+	if val, ok := source["enabled"]; ok {
 
+		databaseParameters.SSH.Enabled, err = strconv.ParseBool(val.(string))
+
+	}
+	if val, ok := source["sshHost"]; ok {
+		databaseParameters.SSH.SSHHost = val.(string)
+	}
+	if val, ok := source["user"]; ok {
+		databaseParameters.SSH.User = val.(string)
+	}
+	if val, ok := source["sshPort"]; ok {
+		databaseParameters.SSH.SSHPort = val.(string)
+	}
 	databaseParameters.Driver = "redshift"
 
-	return databaseParameters
+	return databaseParameters, err
 }
 
 //What does it do:
@@ -284,9 +321,10 @@ func mapAWSRedShiftCredentialsToConfiguration(source map[string]interface{}) AWS
 //Completed:
 // Yes.
 func createRedShiftAWSCredentialsConfiguration(awsredshiftCredentials map[string]interface{}, createdawsredshiftID string, client *KBCClient) error {
+	var err error
 	awsredshiftWriterConfiguration := AWSRedShiftWriterConfiguration{}
 
-	awsredshiftWriterConfiguration.Parameters.Database = mapAWSRedShiftCredentialsToConfiguration(awsredshiftCredentials)
+	awsredshiftWriterConfiguration.Parameters.Database, err = mapAWSRedShiftCredentialsToConfiguration(awsredshiftCredentials)
 
 	awsredshiftWriterConfigurationJSON, err := json.Marshal(awsredshiftWriterConfiguration)
 
@@ -387,7 +425,7 @@ func resourceKeboolaAWSRedShiftWriterUpdate(d *schema.ResourceData, meta interfa
 
 	awsredshiftCredentials := d.Get("redshift_wr_parameters").(map[string]interface{})
 
-	awsredshiftWriter.Configuration.Parameters.Database = mapAWSRedShiftCredentialsToConfiguration(awsredshiftCredentials)
+	awsredshiftWriter.Configuration.Parameters.Database, err = mapAWSRedShiftCredentialsToConfiguration(awsredshiftCredentials)
 
 	awsredshiftConfigJSON, err := json.Marshal(awsredshiftWriter.Configuration)
 

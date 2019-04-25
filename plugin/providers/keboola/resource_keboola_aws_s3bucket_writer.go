@@ -36,7 +36,7 @@ type AWSs3WriterConfiguration struct {
 type AWSs3Writer struct {
 	ID            string                   `json:"id,omitempty"`
 	Name          string                   `json:"name"`
-	Description   string                   `json:"id,description"`
+	Description   string                   `json:"description"`
 	Configuration AWSs3WriterConfiguration `json:"configuration"`
 }
 

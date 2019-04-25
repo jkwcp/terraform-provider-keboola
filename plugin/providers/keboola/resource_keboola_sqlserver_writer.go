@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"strconv"
 
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/plmwong/terraform-provider-keboola/plugin/providers/keboola/buffer"
@@ -49,20 +50,20 @@ type SQLServerWriterStorage struct {
 	} `json:"input,omitempty"`
 }
 type SQLServerWriterConfiguration struct {
-	Parameters    SQLServerWriterParameters `json:"parameters"`
-	Storage       SQLServerWriterStorage    `json:"storage,omitempty"`
-	Forward_token string                    `json:"forward_token"`
+	Parameters SQLServerWriterParameters `json:"parameters"`
+	Storage    SQLServerWriterStorage    `json:"storage,omitempty"`
 }
 type SQLServerWriterDatabaseParameters struct {
-	HostName          string `json:"host"`
-	Database          string `json:"database"`
-	Instance          string `json:"instance"`
-	Password          string `json:"password,omitempty"`
-	EncryptedPassword string `json:"#password,omitempty"`
-	Username          string `json:"user"`
-	Driver            string `json:"driver"`
-	Version           string `json:"tdsVersion"`
-	Port              string `json:"port"`
+	HostName          string             `json:"host"`
+	Database          string             `json:"database"`
+	Instance          string             `json:"instance"`
+	Password          string             `json:"password,omitempty"`
+	EncryptedPassword string             `json:"#password,omitempty"`
+	Username          string             `json:"user"`
+	Driver            string             `json:"driver"`
+	Version           string             `json:"tdsVersion"`
+	Port              string             `json:"port"`
+	SSH               SQLServerWriterSSH `json:"ssh"`
 }
 
 type SQLServerWriterSSH struct {
@@ -115,6 +116,10 @@ func resourceKeboolaSQLServerWriter() *schema.Resource {
 				Default:  true,
 				ForceNew: true,
 			},
+			"description": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 			"sqlserver_db_parameters": {
 				Type:     schema.TypeMap,
 				Optional: true,
@@ -152,12 +157,24 @@ func resourceKeboolaSQLServerWriter() *schema.Resource {
 							Required: true,
 							Default:  7.4,
 						},
+
+						"enabled": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						}, "sshHost": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"user": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"sshPort": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
 					},
 				},
-			},
-			"description": {
-				Type:     schema.TypeString,
-				Optional: true,
 			},
 		},
 	}
@@ -191,6 +208,7 @@ func resourceKeboolaSQLServerWriterCreate(d *schema.ResourceData, meta interface
 	}
 
 	SQLServerDatabaseCredentials := d.Get("sqlserver_db_parameters").(map[string]interface{})
+	//	SQLServerSSH := d.Get("sqlserver_ssh_parameters").(map[string]interface{})
 
 	err = createSQLServerCredentialsConfiguration(SQLServerDatabaseCredentials, createSQLServerID, client)
 
@@ -269,8 +287,8 @@ func createSQLServerWriterConfiguration(name string, description string, client 
 func createSQLServerCredentialsConfiguration(sqlserverCredentials map[string]interface{}, createdSQLServerID string, client *KBCClient) error {
 
 	sqlserverWriterConfiguration := SQLServerWriterConfiguration{}
-
-	sqlserverWriterConfiguration.Parameters.Database = mapSQLServerCredentialsToConfigurationDatabase(sqlserverCredentials)
+	var err error
+	sqlserverWriterConfiguration.Parameters.Database, err = mapSQLServerCredentialsToConfigurationDatabase(sqlserverCredentials)
 
 	sqlserverWriterConfigurationJSON, err := json.Marshal(sqlserverWriterConfiguration)
 
@@ -299,9 +317,10 @@ func createSQLServerCredentialsConfiguration(sqlserverCredentials map[string]int
 // It gets called for the resource update and the creation
 //Completed:
 // Yes.
-func mapSQLServerCredentialsToConfigurationDatabase(source map[string]interface{}) SQLServerWriterDatabaseParameters {
+func mapSQLServerCredentialsToConfigurationDatabase(source map[string]interface{}) (SQLServerWriterDatabaseParameters, error) {
 	databaseParameters := SQLServerWriterDatabaseParameters{}
-
+	var err error
+	err = nil
 	if val, ok := source["hostname"]; ok {
 		databaseParameters.HostName = val.(string)
 	}
@@ -325,10 +344,23 @@ func mapSQLServerCredentialsToConfigurationDatabase(source map[string]interface{
 	if val, ok := source["hashed_password"]; ok {
 		databaseParameters.EncryptedPassword = val.(string)
 	}
+	if val, ok := source["enabled"]; ok {
 
+		databaseParameters.SSH.Enabled, err = strconv.ParseBool(val.(string))
+
+	}
+	if val, ok := source["sshHost"]; ok {
+		databaseParameters.SSH.SSHHost = val.(string)
+	}
+	if val, ok := source["user"]; ok {
+		databaseParameters.SSH.User = val.(string)
+	}
+	if val, ok := source["sshPort"]; ok {
+		databaseParameters.SSH.SSHPort = val.(string)
+	}
 	databaseParameters.Driver = "mssql"
 
-	return databaseParameters
+	return databaseParameters, err
 }
 
 //What does it do:
@@ -367,10 +399,8 @@ func resourceKeboolaSQLServerWriterRead(d *schema.ResourceData, meta interface{}
 	d.Set("id", sqlserverwriter.ID)
 	d.Set("name", sqlserverwriter.Name)
 	d.Set("description", sqlserverwriter.Description)
-
 	if d.Get("provision_new_database") == false {
 		dbParameters := make(map[string]interface{})
-
 		databaseCredentials := sqlserverwriter.Configuration.Parameters.Database
 		dbParameters["hostname"] = databaseCredentials.HostName
 		dbParameters["port"] = databaseCredentials.Port
@@ -379,9 +409,12 @@ func resourceKeboolaSQLServerWriterRead(d *schema.ResourceData, meta interface{}
 		dbParameters["instance"] = databaseCredentials.Instance
 		dbParameters["username"] = databaseCredentials.Username
 		dbParameters["hashed_password"] = databaseCredentials.EncryptedPassword
+		dbParameters["enabled"] = databaseCredentials.SSH.Enabled
+		dbParameters["sshPort"] = databaseCredentials.SSH.SSHPort
+		dbParameters["user"] = databaseCredentials.SSH.User
+		dbParameters["sshhost"] = databaseCredentials.SSH.SSHHost
 		d.Set("sqlserver_db_parameters", dbParameters)
 	}
-
 	return nil
 }
 
@@ -414,9 +447,7 @@ func resourceKeboolaSQLServerWriterUpdate(d *schema.ResourceData, meta interface
 
 	sqlserverCredentials := d.Get("sqlserver_db_parameters").(map[string]interface{})
 
-	if d.Get("provision_new_instance").(bool) == false {
-		sqlserverwriter.Configuration.Parameters.Database = mapSQLServerCredentialsToConfigurationDatabase(sqlserverCredentials)
-	}
+	sqlserverwriter.Configuration.Parameters.Database, err = mapSQLServerCredentialsToConfigurationDatabase(sqlserverCredentials)
 
 	sqlserverConfigJSON, err := json.Marshal(sqlserverwriter.Configuration)
 
