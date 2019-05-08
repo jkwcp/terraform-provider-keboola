@@ -13,44 +13,9 @@
 #}
 
 provider "keboola" {
-  api_key = "5959-152644-jtfLgkQuUNaeYp1alpMt9GfDsjxb59FsUkQp6Dw4"
+  api_key = "5987-152826-LjsNzSfdvOXCU9ByLvWLdF4nlZ7nqsOV4s63bFiJ"
 }
-
-
-resource "keboola_snowflake_extractor" "DemoSnowflakeExtractor" {
-  name = "Snowflake Extractor"
-  description = "Snowflake Extractor"
-  snowflake_db_parameters{
-    hostname="kebooladev.snowflakecomputing.com"
-    port="443"
-    database="HELP_TUTORIAL"
-    schema="HELP_TUTORIAL"
-    warehouse="DEV"
-    user="HELP_TUTORIAL"
-    hashed_password="HELP_TUTORIAL"
-  }
-}
-
-resource "keboola_googledrive_extractor" "DemoGoogleDriveExtractor" {
-  name  = "Google Drive Extractor"
-  description = "Google Drive Extractor"
-}
-
-resource "keboola_transformation_bucket" "DemoTransformationBucket" {
-  name = "Transformation Bucket"
-  description = "Transformation Bucket"
-
-}
-
-resource "keboola_transformation" "DemoTransformation" {
-  bucket_id = "${keboola_transformation_bucket.DemoTransformationBucket.id}"
-  name = "Transformation"
-  description = "Transformation"
-  backend = "snowflake"
-  type = "simple"
-
-}
-
+/*
 resource "keboola_awsredshift_writer" "DemoAWSRedshiftWriter" {
   name  = "Redshift"
   description = "This is an example of aws Redshift"
@@ -63,42 +28,49 @@ resource "keboola_awsredshift_writer" "DemoAWSRedshiftWriter" {
     schema  = "information_schema"
   }
 }
+*/
+resource "keboola_sqlserver_writer" "SqlServerWriter5" {
+  name  = "JON"
+  description = "This is an example of SQL Server From Terraform "
 
-resource "keboola_aws_s3bucket_writer" "DemoS3Bucket" {
-  name  = "S3 Bucket"
-  description = "This is an example of the S3 Bucket"
-  s3_wr_parameters {
-    accessKeyId = "arn:aws:s3:::a01011881-lab-3"
-    bucket = "a01011881-lab-3"
-    secretaccesskey = "=+hY8qbR78iXlxBKA6FzBx0rWrdfeMPbdtqHdTsJR"
-  }
-}
-
-resource "keboola_dropbox_writer" "DemoDropBoxWriter" {
-  name  = "Drop Box"
-  description = "Demo_Dropbox"
-}
-
-resource "keboola_tableau_writer" "DemoTableauWriter" {
-  name  = "Tableau"
-  description = "Demo_Tableau"
-}
-
-resource "keboola_sqlserver_writer" "TermProject2" {
-  name  = "Sql Server Writer"
-  description = "This is an example of SQL Server "
-  
   sqlserver_db_parameters{
-    hostname = "jontestdb.database.windows.net"
+    hostname = "jondavies.database.windows.net"
+
     port = "1433"
-    username = "ADP"
+    username = "Jon"
     hashed_password = "#2702norland"
-    database = "jondbtest"
+    database = "JonDatabase"
     tdsVersion = "7.4"
+    enabled = false
+    sshPort = "1"
+    sshHost = "Test host For AWS Redshift"
+    user = "Test user ssh"
+ 
   }
 }
 
+resource "keboola_sqlserver_writer_tables" "SqlServerWriterTable4" {
+   writer_id = "${keboola_sqlserver_writer.SqlServerWriter5.id}"
+    table{
+      db_name = "Jontest_table2"
+      table_id = "out.c-jontransformation.cars_population"
+      export = true
+      incremental = false
 
+   where_column= "total_cars"
+   changed_since = "-15 minutes"
+  where_values = [" "]
+        items{
+          name = "name"
+          db_name = "tname"
+          type = "nvarchar"
+          nullable = true
+          default = "jon"
+          size = "255"
+        }
 
-
+    }
+ 
+  
+}
 
