@@ -7,6 +7,21 @@ import (
 
 const storageURL = "https://connection.keboola.com/v2/"
 
+//Get request for a ProjectID
+func (c *KBCClient) GetProjectID() (*http.Response, error) {
+	client := &http.Client{}
+
+	req, err := http.NewRequest("GET", "https://connection.keboola.com/v2/storage/tokens/verify", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("X-StorageApi-Token", c.APIKey)
+
+	return client.Do(req)
+
+}
+
 //GetFromStorage requests an object from the Keboola Storage API.
 func (c *KBCClient) GetFromStorage(endpoint string) (*http.Response, error) {
 	client := &http.Client{}
