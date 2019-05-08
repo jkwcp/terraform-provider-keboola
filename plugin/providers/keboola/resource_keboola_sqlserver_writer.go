@@ -330,19 +330,7 @@ func mapSQLServerCredentialsToConfigurationDatabase(source map[string]interface{
 		databaseParameters.Username = val.(string)
 	}
 	if val, ok := source["hashed_password"]; ok {
-
-		body := []byte(val.(string))
-
-		createResponseConfig, err := client.PostToDockerEncrypt("keboola.wr-db-mssql-v2", "5987", body)
-		defer createResponseConfig.Body.Close()
-		resp_body, _ := ioutil.ReadAll(createResponseConfig.Body)
-
-		if hasErrors(err, createResponseConfig) {
-			return databaseParameters, extractError(err, createResponseConfig)
-		}
-
-		databaseParameters.EncryptedPassword = string(resp_body)
-
+		databaseParameters.EncryptedPassword, err = encyrptPassword(val.(string), client)
 	}
 	if val, ok := source["enabled"]; ok {
 		databaseParameters.SSH.Enabled, err = strconv.ParseBool(val.(string))
@@ -364,6 +352,22 @@ func mapSQLServerCredentialsToConfigurationDatabase(source map[string]interface{
 	return databaseParameters, err
 }
 
+func encyrptPassword(value string, client *KBCClient) (str_body string, err error) {
+	body := []byte(value)
+	projectID, err := ProjectID(client)
+	fmt.Println(projectID)
+	createResponseConfig, err := client.PostToDockerEncrypt("keboola.wr-db-mssql-v2", body, projectID)
+	defer createResponseConfig.Body.Close()
+	resp_body, err := ioutil.ReadAll(createResponseConfig.Body)
+
+	if hasErrors(err, createResponseConfig) {
+		return "", err
+	}
+	str_body = string(resp_body)
+	return str_body, nil
+}
+
+//string(workspace.Owner.ID)
 //What does it do:
 //Sql server Read allows you to see what is different from the terraform script and keboola platform and tells us if any changes where made
 //When does it get called:
