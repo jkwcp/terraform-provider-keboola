@@ -87,7 +87,7 @@ func resourceKeboolaSQLServerWriterTables() *schema.Resource {
 								Type: schema.TypeString,
 							},
 						},
-						"items": {
+						"column": {
 							Type:     schema.TypeList,
 							Optional: true,
 							Elem: &schema.Resource{
@@ -176,7 +176,7 @@ func resourceKeboolaSQLServerWriterTablesCreate(d *schema.ResourceData, meta int
 		if q := config["where_values"]; q != nil {
 			storageTable.WhereValues = AsStringArray(q.([]interface{}))
 		}
-		itemConfigs := config["items"].([]interface{})
+		itemConfigs := config["column"].([]interface{})
 		mappedItems := make([]SQLServerWriterTableItem, 0, len(itemConfigs))
 		columnsNames := make([]string, 0, len(itemConfigs))
 
@@ -274,26 +274,26 @@ func resourceKeboolaSQLServerTablesRead(d *schema.ResourceData, meta interface{}
 	}
 
 	var tables []map[string]interface{}
-	/*
-		storageInputTableMap := make(map[string]SQLServerWriterTable)
 
-			for _, storageInputTable := range sqlserverWriter.Configuration.Storage.Input.Tables {
-					storageInputTableMap[storageInputTable.Source] = storageInputTable
-			}
-	*/
+	storageInputTableMap := make(map[string]SQLServerWriterStorageTable)
+
+	for _, storageInputTable := range sqlserverWriter.Configuration.Storage.Input.Tables {
+		storageInputTableMap[storageInputTable.Source] = storageInputTable
+	}
+
 	for _, tableConfig := range sqlserverWriter.Configuration.Parameters.Tables {
-		//	storageInputTable := storageInputTableMap[tableConfig.TableID]
+		storageInputTable := storageInputTableMap[tableConfig.TableID]
 		tableDetails := map[string]interface{}{
 			"db_Name":     tableConfig.DatabaseName,
 			"export":      tableConfig.Export,
 			"table_Id":    tableConfig.TableID,
 			"incremental": tableConfig.Incremental,
 			"primary_key": tableConfig.PrimaryKey,
-			//	"load_type":   tableConfig.LoadType,
-			//		"changed_since":  storageInputTable.ChangedSince,
-			//		"where_column":   storageInputTable.WhereColumn,
-			//		"where_operator": storageInputTable.WhereOperator,
-			//		"where_values":   storageInputTable.WhereValues,
+
+			"changed_since":  storageInputTable.ChangedSince,
+			"where_column":   storageInputTable.WhereColumn,
+			"where_operator": storageInputTable.WhereOperator,
+			"where_values":   storageInputTable.WhereValues,
 		}
 
 		var items []map[string]interface{}
@@ -309,7 +309,7 @@ func resourceKeboolaSQLServerTablesRead(d *schema.ResourceData, meta interface{}
 
 			items = append(items, itemDetails)
 		}
-		tableDetails["items"] = items
+		tableDetails["column"] = items
 
 		tables = append(tables, tableDetails)
 	}

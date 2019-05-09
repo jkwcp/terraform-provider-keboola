@@ -277,7 +277,7 @@ func createSQLServerCredentialsConfiguration(sqlserverCredentials map[string]int
 
 	sqlserverWriterConfiguration := SQLServerWriterConfiguration{}
 	var err error
-	sqlserverWriterConfiguration.Parameters.Database, err = mapSQLServerCredentialsToConfigurationDatabase(sqlserverCredentials, client, createdSQLServerID)
+	sqlserverWriterConfiguration.Parameters.Database, err = mapSQLServerCredentialsToConfigurationDatabase(sqlserverCredentials, client)
 
 	sqlserverWriterConfigurationJSON, err := json.Marshal(sqlserverWriterConfiguration)
 
@@ -306,7 +306,7 @@ func createSQLServerCredentialsConfiguration(sqlserverCredentials map[string]int
 // It gets called for the resource update and the creation
 //Completed:
 // Yes.
-func mapSQLServerCredentialsToConfigurationDatabase(source map[string]interface{}, client *KBCClient, createdSQLServerID string) (SQLServerWriterDatabaseParameters, error) {
+func mapSQLServerCredentialsToConfigurationDatabase(source map[string]interface{}, client *KBCClient) (SQLServerWriterDatabaseParameters, error) {
 	databaseParameters := SQLServerWriterDatabaseParameters{}
 	var err error
 	err = nil
@@ -330,7 +330,7 @@ func mapSQLServerCredentialsToConfigurationDatabase(source map[string]interface{
 		databaseParameters.Username = val.(string)
 	}
 	if val, ok := source["hashed_password"]; ok {
-		databaseParameters.EncryptedPassword, err = encyrptPassword(val.(string), client)
+		databaseParameters.EncryptedPassword, err = SqlServerencyrptPassword(val.(string), client)
 	}
 	if val, ok := source["enabled"]; ok {
 		databaseParameters.SSH.Enabled, err = strconv.ParseBool(val.(string))
@@ -345,6 +345,11 @@ func mapSQLServerCredentialsToConfigurationDatabase(source map[string]interface{
 	if val, ok := source["sshPort"]; ok {
 		databaseParameters.SSH.SSHPort = val.(string)
 	}
+	/*
+		if databaseParameters.SSH.Enabled == true {
+		https: //docker-runner.keboola.com/docker/keboola.ssh-keygen-v2/action/generate
+		}
+	*/
 	////////////////////////filtering ///////////////////
 
 	databaseParameters.Driver = "mssql"
@@ -352,7 +357,7 @@ func mapSQLServerCredentialsToConfigurationDatabase(source map[string]interface{
 	return databaseParameters, err
 }
 
-func encyrptPassword(value string, client *KBCClient) (str_body string, err error) {
+func SqlServerencyrptPassword(value string, client *KBCClient) (str_body string, err error) {
 	body := []byte(value)
 	projectID, err := ProjectID(client)
 	fmt.Println(projectID)
@@ -435,6 +440,11 @@ func resourceKeboolaSQLServerWriterUpdate(d *schema.ResourceData, meta interface
 		return err
 	}
 
+	sqlserverwriterCredentials := d.Get("sqlserver_db_parameters").(map[string]interface{})
+
+
+		sqlserverwriter.Configuration.Parameters.Database, err = mapSQLServerCredentialsToConfigurationDatabase(sqlserverwriterCredentials, client)
+	
 	sqlserverConfigJSON, err := json.Marshal(sqlserverwriter.Configuration)
 
 	if err != nil {

@@ -53,6 +53,28 @@ func resourceKeboolaAWSRedShiftWriterTable() *schema.Resource {
 								Type: schema.TypeString,
 							},
 						},
+						"changed_since": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  "",
+						},
+						"where_column": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  "",
+						},
+						"where_operator": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  "eq",
+						},
+						"where_values": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+						},
 						"column": {
 							Type:     schema.TypeList,
 							Optional: true,
@@ -120,7 +142,19 @@ func resourceKeboolaAWSRedShiftWriterTablesCreate(d *schema.ResourceData, meta i
 			Source:      mappedTable.TableID,
 			Destination: fmt.Sprintf("%s.csv", mappedTable.TableID),
 		}
+		if val, ok := config["changed_since"]; ok {
+			storageTable.ChangedSince = val.(string)
+		}
+		if val, ok := config["where_column"]; ok {
+			storageTable.WhereColumn = val.(string)
+		}
+		if val, ok := config["where_operator"]; ok {
+			storageTable.WhereOperator = val.(string)
+		}
 
+		if q := config["where_values"]; q != nil {
+			storageTable.WhereValues = AsStringArray(q.([]interface{}))
+		}
 		columnConfigs := config["column"].([]interface{})
 		mappedColumns := make([]AWSRedShiftWriterTableItem, 0, len(columnConfigs))
 		columnNames := make([]string, 0, len(columnConfigs))
@@ -220,14 +254,23 @@ func resourceKeboolaAWSRedShiftWriterTablesRead(d *schema.ResourceData, meta int
 	}
 
 	var tables []map[string]interface{}
+	storageInputTableMap := make(map[string]AWSRedShiftWriterStorageTable)
 
+	for _, storageInputTable := range awsredshiftWriter.Configuration.Storage.Input.Tables {
+		storageInputTableMap[storageInputTable.Source] = storageInputTable
+	}
 	for _, tableConfig := range awsredshiftWriter.Configuration.Parameters.Tables {
+		storageInputTable := storageInputTableMap[tableConfig.TableID]
 		tableDetails := map[string]interface{}{
-			"db_name":     tableConfig.DatabaseName,
-			"export":      tableConfig.Export,
-			"table_id":    tableConfig.TableID,
-			"incremental": tableConfig.Incremental,
-			"primary_key": tableConfig.PrimaryKey,
+			"db_name":        tableConfig.DatabaseName,
+			"export":         tableConfig.Export,
+			"table_id":       tableConfig.TableID,
+			"incremental":    tableConfig.Incremental,
+			"primary_key":    tableConfig.PrimaryKey,
+			"changed_since":  storageInputTable.ChangedSince,
+			"where_column":   storageInputTable.WhereColumn,
+			"where_operator": storageInputTable.WhereOperator,
+			"where_values":   storageInputTable.WhereValues,
 		}
 
 		var columns []map[string]interface{}
@@ -281,7 +324,19 @@ func resourceKeboolaAWSRedShiftWriterTablesUpdate(d *schema.ResourceData, meta i
 			Source:      mappedTable.TableID,
 			Destination: fmt.Sprintf("%s.csv", mappedTable.TableID),
 		}
+		if val, ok := config["changed_since"]; ok {
+			storageTable.ChangedSince = val.(string)
+		}
+		if val, ok := config["where_column"]; ok {
+			storageTable.WhereColumn = val.(string)
+		}
+		if val, ok := config["where_operator"]; ok {
+			storageTable.WhereOperator = val.(string)
+		}
 
+		if q := config["where_values"]; q != nil {
+			storageTable.WhereValues = AsStringArray(q.([]interface{}))
+		}
 		columnConfigs := config["column"].([]interface{})
 		mappedColumns := make([]AWSRedShiftWriterTableItem, 0, len(columnConfigs))
 		columnNames := make([]string, 0, len(columnConfigs))
