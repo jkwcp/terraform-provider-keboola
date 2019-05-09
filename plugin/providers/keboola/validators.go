@@ -51,7 +51,6 @@ func validateOrchestrationNotificationChannel(v interface{}, k string) (ws []str
 
 	return
 }
-
 func validateKBCEncryptedValue(v interface{}, k string) (ws []string, errors []error) {
 	value := v.(string)
 	if !strings.HasPrefix(value, "KBC::ProjectSecure::") {
