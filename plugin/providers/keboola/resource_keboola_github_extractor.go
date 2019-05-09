@@ -115,9 +115,52 @@ func resourceKeboolaGithubImportExtractorRead(d *schema.ResourceData, meta inter
 }
 
 func resourceKeboolaGithubImportExtractorUpdate(d *schema.ResourceData, meta interface{}) error {
+	log.Println("[INFO] Updating GitHub Extractor in Keboola.")
+
+	client := meta.(*KBCClient)
+
+	getExtractorResponse, err := client.GetFromStorage(fmt.Sprintf("storage/components/keboola.ex-github/configs/%s", d.Id()))
+
+	if hasErrors(err, getExtractorResponse) {
+		return extractError(err, getExtractorResponse)
+	}
+
+	var githubImportExtractor GithubImportExtractor
+
+	decoder := json.NewDecoder(getExtractorResponse.Body)
+	err = decoder.Decode(&githubImportExtractor)
+
+	if err != nil {
+		return err
+	}
+
+	updateCredentialsForm := url.Values{}
+	updateCredentialsForm.Add("name", d.Get("name").(string))
+	updateCredentialsForm.Add("description", d.Get("description").(string))
+	updateCredentialsForm.Add("changeDescription", "Updated GitHub Extractor configuration via Terraform")
+
+	updateCredentialsBuffer := buffer.FromForm(updateCredentialsForm)
+	updateCredentialsResponse, err := client.PutToStorage(fmt.Sprintf("storage/components/keboola.ex-github/configs/%s", d.Id()), updateCredentialsBuffer)
+
+	if hasErrors(err, updateCredentialsResponse) {
+		return extractError(err, updateCredentialsResponse)
+	}
+
 	return nil
 }
 
 func resourceKeboolaGithubImportExtractorDelete(d *schema.ResourceData, meta interface{}) error {
+	log.Printf("[INFO] Deleting GitHub Extractor in Keboola: %s", d.Id())
+
+	client := meta.(*KBCClient)
+	destroyResponse, err := client.DeleteFromStorage(fmt.Sprintf("storage/components/keboola.ex-github/configs/%s", d.Id()))
+
+	if hasErrors(err, destroyResponse) {
+		return extractError(err, destroyResponse)
+	}
+
+	d.SetId("")
+
 	return nil
+
 }
