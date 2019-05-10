@@ -4,6 +4,7 @@ package keboola
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/url"
 	"strconv"
@@ -48,9 +49,13 @@ type AWSRedShiftWriterParameters struct {
 }
 
 type AWSRedShiftWriterStorageTable struct {
-	Source      string   `json:"source"`
-	Destination string   `json:"destination"`
-	Columns     []string `json:"columns"`
+	Source        string   `json:"source"`
+	Destination   string   `json:"destination"`
+	Columns       []string `json:"columns"`
+	ChangedSince  string   `json:"changed_since,omitempty"`
+	WhereColumn   string   `json:"where_column,omitempty"`
+	WhereOperator string   `json:"where_operator,omitempty"`
+	WhereValues   []string `json:"where_values,omitempty"`
 }
 
 type AWSRedShiftWriterStorage struct {
@@ -156,6 +161,7 @@ func resourceKeboolaAWSRedshiftWriter() *schema.Resource {
 						"enabled": {
 							Type:     schema.TypeBool,
 							Optional: true,
+							////////////////////SSH////////////////////
 						}, "sshHost": {
 							Type:     schema.TypeString,
 							Optional: true,
@@ -168,6 +174,8 @@ func resourceKeboolaAWSRedshiftWriter() *schema.Resource {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
+						////////////////////SSH////////////////////
+
 					},
 				},
 			},
@@ -272,7 +280,7 @@ func createAWSRedShiftAccessToken(AWSRedShiftID string, client *KBCClient) error
 // It gets called for the resource update and the creation
 //Completed:
 // Yes.
-func mapAWSRedShiftCredentialsToConfiguration(source map[string]interface{}) (AWSRedshiftWriterDatabaseParameters, error) {
+func mapAWSRedShiftCredentialsToConfiguration(source map[string]interface{}, client *KBCClient) (AWSRedshiftWriterDatabaseParameters, error) {
 	databaseParameters := AWSRedshiftWriterDatabaseParameters{}
 	var err error
 	err = nil
@@ -293,7 +301,7 @@ func mapAWSRedShiftCredentialsToConfiguration(source map[string]interface{}) (AW
 		databaseParameters.Username = val.(string)
 	}
 	if val, ok := source["hashed_password"]; ok {
-		databaseParameters.EncryptedPassword = val.(string)
+		databaseParameters.EncryptedPassword, err = RedShiftencyrptPassword(val.(string), client)
 	}
 	if val, ok := source["enabled"]; ok {
 
@@ -313,6 +321,20 @@ func mapAWSRedShiftCredentialsToConfiguration(source map[string]interface{}) (AW
 
 	return databaseParameters, err
 }
+func RedShiftencyrptPassword(value string, client *KBCClient) (str_body string, err error) {
+	body := []byte(value)
+	projectID, err := ProjectID(client)
+
+	createResponseConfig, err := client.PostToDockerEncrypt("keboola.wr-redshift-v2", body, projectID)
+	defer createResponseConfig.Body.Close()
+	resp_body, err := ioutil.ReadAll(createResponseConfig.Body)
+
+	if hasErrors(err, createResponseConfig) {
+		return "", err
+	}
+	str_body = string(resp_body)
+	return str_body, nil
+}
 
 //What does it do:
 // It creates a new configruation for your AWS Redshift and add the name and description you put for that configuration
@@ -324,7 +346,7 @@ func createRedShiftAWSCredentialsConfiguration(awsredshiftCredentials map[string
 	var err error
 	awsredshiftWriterConfiguration := AWSRedShiftWriterConfiguration{}
 
-	awsredshiftWriterConfiguration.Parameters.Database, err = mapAWSRedShiftCredentialsToConfiguration(awsredshiftCredentials)
+	awsredshiftWriterConfiguration.Parameters.Database, err = mapAWSRedShiftCredentialsToConfiguration(awsredshiftCredentials, client)
 
 	awsredshiftWriterConfigurationJSON, err := json.Marshal(awsredshiftWriterConfiguration)
 
@@ -422,10 +444,9 @@ func resourceKeboolaAWSRedShiftWriterUpdate(d *schema.ResourceData, meta interfa
 	if err != nil {
 		return err
 	}
-
 	awsredshiftCredentials := d.Get("redshift_wr_parameters").(map[string]interface{})
 
-	awsredshiftWriter.Configuration.Parameters.Database, err = mapAWSRedShiftCredentialsToConfiguration(awsredshiftCredentials)
+	awsredshiftWriter.Configuration.Parameters.Database, err = mapAWSRedShiftCredentialsToConfiguration(awsredshiftCredentials, client)
 
 	awsredshiftConfigJSON, err := json.Marshal(awsredshiftWriter.Configuration)
 
