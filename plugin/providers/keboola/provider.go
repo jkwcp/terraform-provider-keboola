@@ -37,6 +37,7 @@ func Provider() terraform.ResourceProvider {
 			"keboola_dropbox_writer":            resourceKeboolaDropboxWriter(),
 			"keboola_aws_s3bucket_writer":       resourceKeboolaAWSs3Writer(),
 			"keboola_snowflake_writer":          resourceKeboolaSnowflakeWriter(),
+			"keboola_extractor_table":           resourceKeboolaExtractorTable(),
 		},
 
 		ConfigureFunc: providerConfigure,
