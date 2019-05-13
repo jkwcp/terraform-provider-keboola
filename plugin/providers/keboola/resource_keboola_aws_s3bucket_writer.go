@@ -4,6 +4,7 @@ package keboola
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/url"
 
@@ -15,22 +16,54 @@ type AWSs3WriterDatabaseParameters struct {
 	AccessKeyId string `json:"accessKeyId"`
 	SecretKey   string `json:"#secretAccessKey"`
 	Bucket      string `json:"bucket"`
+	Prefix      string `json:"prefix"`
 }
 
 type AWSs3WriterStorageTable struct {
-	Source      string   `json:"source"`
-	Destination string   `json:"destination"`
-	Columns     []string `json:"columns"`
+	Source      string `json:"source"`
+	Destination string `json:"destination"`
 }
 
+type Awss3Definition struct {
+	Component string `json:"component"`
+}
+type Awss3parameters struct {
+	Direction string `json:"direction"`
+}
+
+type AWSS3WriterTable struct {
+	TableID string `json:"tableId"`
+}
 type AWSs3WriterStorage struct {
 	Input struct {
 		Tables []AWSs3WriterStorageTable `json:"tables,omitempty"`
 	} `json:"input,omitempty"`
 }
+type Awss3WriterStorageTableBefore struct {
+	ComponentStorage Awss3Definition `json:"definition"`
+	DirectionStorage Awss3parameters `json:"parameters"`
+}
+type AWSs3WriterProcessor struct {
+	Before []Awss3WriterStorageTableBefore `json:"before"`
+}
+
+/*
+type AWSs3WriterProcessorDef struct {
+	Before struct {
+		Processorsdefinition []Awss3Definition `json:"definition"`
+	} `json:"before"`
+}
+type AWSs3WriterProcessorPara struct {
+	Before struct {
+		Processorsparameters []Awss3parameters `json: "parameters"`
+	} `json:"before"`
+}
+*/
 type AWSs3WriterConfiguration struct {
 	Parameters AWSs3WriterDatabaseParameters `json:"parameters"`
 	Storage    AWSs3WriterStorage            `json:"storage,omitempty"`
+	Processors AWSs3WriterProcessor          `json:"processors"`
+	//	Component AWSs3WriterProcessorDef `json:"component,omitempty"`
 }
 
 type AWSs3Writer struct {
@@ -72,13 +105,17 @@ func resourceKeboolaAWSs3Writer() *schema.Resource {
 					Schema: map[string]*schema.Schema{
 						"bucket": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 						"accesskeyid": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 						"secretaccesskey": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"prefix": {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
@@ -184,20 +221,39 @@ func createAWSs3AccessToken(AWSs3ID string, client *KBCClient) error {
 // It gets called for the resource update and the creation
 //Completed:
 // Yes.
-func mapAWSs3CredentialsToConfiguration(source map[string]interface{}) AWSs3WriterDatabaseParameters {
+func mapAWSs3CredentialsToConfiguration(source map[string]interface{}, client *KBCClient) (AWSs3WriterDatabaseParameters, error) {
 	Parameters := AWSs3WriterDatabaseParameters{}
-
+	var err error
+	err = nil
 	if val, ok := source["bucket"]; ok {
 		Parameters.Bucket = val.(string)
 	}
-	if val, ok := source["accessKeyId"]; ok {
+	if val, ok := source["accesskeyId"]; ok {
 		Parameters.AccessKeyId = val.(string)
 	}
 	if val, ok := source["secretaccesskey"]; ok {
-		Parameters.SecretKey = val.(string)
+
+		Parameters.SecretKey, err = S3BucketencyrptPassword(val.(string), client)
+	}
+	if val, ok := source["prefix"]; ok {
+		Parameters.Prefix = val.(string)
 	}
 
-	return Parameters
+	return Parameters, err
+}
+func S3BucketencyrptPassword(value string, client *KBCClient) (str_body string, err error) {
+	body := []byte(value)
+	projectID, err := ProjectID(client)
+	fmt.Println(projectID)
+	createResponseConfig, err := client.PostToDockerEncrypt("keboola.wr-aws-s3", body, projectID)
+	defer createResponseConfig.Body.Close()
+	resp_body, err := ioutil.ReadAll(createResponseConfig.Body)
+
+	if hasErrors(err, createResponseConfig) {
+		return "", err
+	}
+	str_body = string(resp_body)
+	return str_body, nil
 }
 
 //What does it do:
@@ -208,8 +264,9 @@ func mapAWSs3CredentialsToConfiguration(source map[string]interface{}) AWSs3Writ
 // Yes.
 func creates3AWSCredentialsConfiguration(awss3Credentials map[string]interface{}, createdawss3ID string, client *KBCClient) error {
 	awss3WriterConfiguration := AWSs3WriterConfiguration{}
-
-	awss3WriterConfiguration.Parameters = mapAWSs3CredentialsToConfiguration(awss3Credentials)
+	var err error
+	err = nil
+	awss3WriterConfiguration.Parameters, err = mapAWSs3CredentialsToConfiguration(awss3Credentials, client)
 
 	awss3WriterConfigurationJSON, err := json.Marshal(awss3WriterConfiguration)
 
@@ -264,17 +321,16 @@ func resourceKeboolaAWSs3WriterRead(d *schema.ResourceData, meta interface{}) er
 	d.Set("name", awss3writer.Name)
 	d.Set("description", awss3writer.Description)
 
-	if d.Get("provision_new_database") == false {
-		dbParameters := make(map[string]interface{})
+	dbParameters := make(map[string]interface{})
 
-		databaseCredentials := awss3writer.Configuration.Parameters
+	databaseCredentials := awss3writer.Configuration.Parameters
 
-		dbParameters["accesskeyid"] = databaseCredentials.AccessKeyId
-		dbParameters["#secretAccessKey"] = databaseCredentials.SecretKey
-		dbParameters["bucket"] = databaseCredentials.Bucket
+	dbParameters["accesskeyid"] = databaseCredentials.AccessKeyId
+	dbParameters["#secretAccessKey"] = databaseCredentials.SecretKey
+	dbParameters["bucket"] = databaseCredentials.Bucket
+	dbParameters["prefix"] = databaseCredentials.Prefix
 
-		d.Set("s3_wr_parameters", dbParameters)
-	}
+	d.Set("s3_wr_parameters", dbParameters)
 
 	return nil
 }
@@ -307,7 +363,7 @@ func resourceKeboolaAWSs3WriterUpdate(d *schema.ResourceData, meta interface{}) 
 
 	awss3Credentials := d.Get("s3_wr_parameters").(map[string]interface{})
 
-	awss3Writer.Configuration.Parameters = mapAWSs3CredentialsToConfiguration(awss3Credentials)
+	awss3Writer.Configuration.Parameters, err = mapAWSs3CredentialsToConfiguration(awss3Credentials, client)
 
 	awss3ConfigJSON, err := json.Marshal(awss3Writer.Configuration)
 
