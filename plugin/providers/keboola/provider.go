@@ -38,8 +38,14 @@ func Provider() terraform.ResourceProvider {
 			"keboola_aws_s3bucket_writer":       resourceKeboolaAWSs3Writer(),
 			"keboola_aws_s3Bucket_table":        resourceKeboolaAWSS3Bucket(),
 			"keboola_snowflake_writer":          resourceKeboolaSnowflakeWriter(),
+<<<<<<< HEAD
 			"keboola_mysql_writer":              resourceKeboolaMySqlWriter(),
 			"keboola_mysql_writer_table":        resourceKeboolaMySqlWriterTable(),
+=======
+			"keboola_github_extractor":          resourceKeboolaGithubImportExtractor(),
+			"keboola_firebird_extractor":        resourceKeboolaFirebirdExtractor(),
+			"keboola_adform_extractor":          resourceKeboolaAdformExtractor(),
+>>>>>>> b343fbbcfe133876efca6812ecd64cd0ca0272af
 		},
 
 		ConfigureFunc: providerConfigure,
