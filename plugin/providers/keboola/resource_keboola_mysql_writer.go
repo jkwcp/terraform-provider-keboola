@@ -19,9 +19,9 @@ type MySqlWriterDatabaseParameters struct {
 	EncryptedPassword string `json:"#password,omitempty"`
 	Username          string `json:"user"`
 
-	Port   string   `json:"port"`
-	Driver string   `json:"driver"`
-	SSH    MySqlSSH `json:"ssh"`
+	Port   string    `json:"port"`
+	Driver string    `json:"driver"`
+	SSH    SSHTunnel `json:"ssh"`
 }
 type MySqlWriterParameters struct {
 	Database MySqlWriterDatabaseParameters `json:"db"`
@@ -58,12 +58,7 @@ type MySqlWriterStorage struct {
 		Tables []MySqlWriterStorageTable `json:"tables,omitempty"`
 	} `json:"input,omitempty"`
 }
-type MySqlSSH struct {
-	Enabled bool   `json:"enabled"`
-	SSHHost string `json:"sshHost"`
-	User    string `json:"user"`
-	SSHPort string `json:"sshPort"`
-}
+
 type MySqlWriter struct {
 	ID            string                   `json:"id,omitempty"`
 	Name          string                   `json:"name"`
@@ -139,7 +134,6 @@ func resourceKeboolaMySqlWriter() *schema.Resource {
 						"enabled": {
 							Type:     schema.TypeBool,
 							Optional: true,
-							////////////////////SSH////////////////////
 						},
 						"sshHost": {
 							Type:     schema.TypeString,
@@ -165,10 +159,6 @@ func resourceKeboolaMySqlWriter() *schema.Resource {
 	}
 }
 
-type Payload struct {
-	ConfigData []interface{} `json:"configData"`
-}
-
 /*
 func mySqlSSHConvertert(client *KBCClient) (str_body string, err error) {
 	//	mi := MySqlSSH{}
@@ -186,9 +176,6 @@ func resourceKeboolaMySqltWriterCreate(d *schema.ResourceData, meta interface{})
 	if err != nil {
 		return err
 	}
-
-	d.SetPartial("name")
-	d.SetPartial("description")
 
 	err = createMySqlAccessToken(createdMySqlID, client)
 	if err != nil {
@@ -296,8 +283,6 @@ func mapMySqlDatabaseCredentialsToConfiguration(source map[string]interface{}, c
 		databaseParameters.EncryptedPassword, err = mySqlencyrptPassword(val.(string), client)
 	}
 
-	databaseParameters.Driver = "mysql"
-
 	return databaseParameters, err
 }
 func mySqlencyrptPassword(value string, client *KBCClient) (str_body string, err error) {
@@ -314,15 +299,17 @@ func mySqlencyrptPassword(value string, client *KBCClient) (str_body string, err
 	str_body = string(resp_body)
 	return str_body, nil
 }
-func mapMySqlSSHCredentialsToConfiguration(source map[string]interface{}, client *KBCClient) (MySqlSSH, error) {
+func mapMySqlSSHCredentialsToConfiguration(source map[string]interface{}, client *KBCClient) (SSHTunnel, error) {
 
-	sshParameters := MySqlSSH{}
+	sshParameters := SSHTunnel{}
 	var err error
 	err = nil
 	if val, ok := source["enabled"]; ok {
 
 		sshParameters.Enabled, err = strconv.ParseBool(val.(string))
-
+		sshParameters.SSHKey, err = client.PostToDockerCreateSSH()
+		sshParameters.SSHKey.PrivateKeyEncrypted, err = mySqlencyrptPassword(sshParameters.SSHKey.PrivateKeyEncrypted, client)
+		sshParameters.SSHKey.PrivateKey = ""
 	}
 	if val, ok := source["sshHost"]; ok {
 		sshParameters.SSHHost = val.(string)

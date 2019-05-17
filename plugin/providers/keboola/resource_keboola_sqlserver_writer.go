@@ -14,15 +14,15 @@ import (
 )
 
 type SQLServerWriterDatabaseParameters struct {
-	HostName          string             `json:"host"`
-	Database          string             `json:"database"`
-	Instance          string             `json:"instance"`
-	EncryptedPassword string             `json:"#password"`
-	Username          string             `json:"user"`
-	Driver            string             `json:"driver"`
-	Version           string             `json:"tdsVersion"`
-	Port              string             `json:"port"`
-	SSH               SQLServerWriterSSH `json:"ssh"`
+	HostName          string    `json:"host"`
+	Database          string    `json:"database"`
+	Instance          string    `json:"instance"`
+	EncryptedPassword string    `json:"#password"`
+	Username          string    `json:"user"`
+	Driver            string    `json:"driver"`
+	Version           string    `json:"tdsVersion"`
+	Port              string    `json:"port"`
+	SSH               SSHTunnel `json:"ssh"`
 }
 
 type SQLServerWriterTableItem struct {
@@ -65,13 +65,6 @@ type SQLServerWriterStorage struct {
 type SQLServerWriterConfiguration struct {
 	Parameters SQLServerWriterParameters `json:"parameters"`
 	Storage    SQLServerWriterStorage    `json:"storage,omitempty"`
-}
-
-type SQLServerWriterSSH struct {
-	Enabled bool   `json:"enabled"`
-	SSHHost string `json:"sshHost"`
-	User    string `json:"user"`
-	SSHPort string `json:"sshPort"`
 }
 
 type SQLServerWriter struct {
@@ -338,6 +331,10 @@ func mapSQLServerCredentialsToConfigurationDatabase(source map[string]interface{
 	// //////////////////////SSH ///////////////////////
 	if val, ok := source["sshHost"]; ok {
 		databaseParameters.SSH.SSHHost = val.(string)
+		databaseParameters.Driver = "mssql"
+		databaseParameters.SSH.SSHKey, err = client.PostToDockerCreateSSH()
+		databaseParameters.SSH.SSHKey.PrivateKeyEncrypted, err = SqlServerencyrptPassword(databaseParameters.SSH.SSHKey.PrivateKeyEncrypted, client)
+		databaseParameters.SSH.SSHKey.PrivateKey = ""
 	}
 	if val, ok := source["user"]; ok {
 		databaseParameters.SSH.User = val.(string)
@@ -351,8 +348,6 @@ func mapSQLServerCredentialsToConfigurationDatabase(source map[string]interface{
 		}
 	*/
 	////////////////////////filtering ///////////////////
-
-	databaseParameters.Driver = "mssql"
 
 	return databaseParameters, err
 }

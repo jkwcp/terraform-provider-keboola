@@ -46,12 +46,7 @@ func resourceKeboolaMySqlWriterTable() *schema.Resource {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
-						/*
-							"load_type": {
-								Type:     schema.TypeString,
-								Optional: true,
-							},
-						*/
+
 						"incremental": {
 							Type:     schema.TypeBool,
 							Optional: true,
