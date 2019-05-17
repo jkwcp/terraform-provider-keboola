@@ -1,6 +1,5 @@
 package keboola
 
-//this isn't complete
 import (
 	"encoding/json"
 	"fmt"
@@ -11,10 +10,16 @@ import (
 	"github.com/plmwong/terraform-provider-keboola/plugin/providers/keboola/buffer"
 )
 
+//What does it do:
+//It creates a resource for sqlwriter talbe
+//When does it get called:
+//it gets called from the propvider when the terraform script calls the provider
+//Completed:
+// No
 func resourceKeboolaAWSRedShiftWriterTable() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceKeboolaAWSRedShiftWriterTablesCreate,
-		Read:   resourceKeboolaAWSRedShiftWriterTablesRead,
+		Read:   resourceKeboolaAWSRedShiftTablesRead,
 		Update: resourceKeboolaAWSRedShiftWriterTablesUpdate,
 		Delete: resourceKeboolaAWSRedShiftWriterTablesDelete,
 
@@ -41,11 +46,18 @@ func resourceKeboolaAWSRedShiftWriterTable() *schema.Resource {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
+						/*
+							"load_type": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						*/
 						"incremental": {
 							Type:     schema.TypeBool,
 							Optional: true,
 							Default:  false,
 						},
+
 						"primary_key": {
 							Type:     schema.TypeList,
 							Optional: true,
@@ -115,8 +127,17 @@ func resourceKeboolaAWSRedShiftWriterTable() *schema.Resource {
 		},
 	}
 }
+
+//What does it do:
+// Its suppose to create the table for the the RedShfit componeent
+//When does it get called:
+// It gets called when the the resourceKeboolaAWSRedShiftWriterTables calls it
+//Completed:
+// No
 func resourceKeboolaAWSRedShiftWriterTablesCreate(d *schema.ResourceData, meta interface{}) error {
-	log.Println("[INFO] Creating AWS RedShift Writer Tables in Keboola.")
+	log.Println("[INFO] Creating AWS RedShift Tables in Keboola")
+
+	client := meta.(*KBCClient)
 
 	writerID := d.Get("writer_id").(string)
 	tables := d.Get("table").(*schema.Set).List()
@@ -126,12 +147,12 @@ func resourceKeboolaAWSRedShiftWriterTablesCreate(d *schema.ResourceData, meta i
 
 	for _, table := range tables {
 		config := table.(map[string]interface{})
-
 		mappedTable := AWSRedShiftWriterTable{
 			DatabaseName: config["db_name"].(string),
 			Export:       config["export"].(bool),
 			TableID:      config["table_id"].(string),
 			Incremental:  config["incremental"].(bool),
+			//	LoadType:     config["load_type"].(string),
 		}
 
 		if q := config["primary_key"]; q != nil {
@@ -155,33 +176,30 @@ func resourceKeboolaAWSRedShiftWriterTablesCreate(d *schema.ResourceData, meta i
 		if q := config["where_values"]; q != nil {
 			storageTable.WhereValues = AsStringArray(q.([]interface{}))
 		}
-		columnConfigs := config["column"].([]interface{})
-		mappedColumns := make([]AWSRedShiftWriterTableItem, 0, len(columnConfigs))
-		columnNames := make([]string, 0, len(columnConfigs))
-		for _, column := range columnConfigs {
-			columnConfig := column.(map[string]interface{})
+		itemConfigs := config["column"].([]interface{})
+		mappedItems := make([]AWSRedShiftWriterTableItem, 0, len(itemConfigs))
+		columnsNames := make([]string, 0, len(itemConfigs))
 
-			mappedColumn := AWSRedShiftWriterTableItem{
-				Name:         columnConfig["name"].(string),
-				DatabaseName: columnConfig["db_name"].(string),
-				Type:         columnConfig["type"].(string),
-				Size:         columnConfig["size"].(string),
-				IsNullable:   columnConfig["nullable"].(bool),
-				DefaultValue: columnConfig["default"].(string),
+		for _, item := range itemConfigs {
+			itemConfig := item.(map[string]interface{})
+
+			mappedItem := AWSRedShiftWriterTableItem{
+				Name:         itemConfig["name"].(string),
+				DatabaseName: itemConfig["db_name"].(string),
+				Type:         itemConfig["type"].(string),
+				Size:         itemConfig["size"].(string),
+				IsNullable:   itemConfig["nullable"].(bool),
+				DefaultValue: itemConfig["default"].(string),
 			}
-
-			mappedColumns = append(mappedColumns, mappedColumn)
-			columnNames = append(columnNames, mappedColumn.Name)
+			mappedItems = append(mappedItems, mappedItem)
+			columnsNames = append(columnsNames, mappedItem.Name)
 		}
-
-		mappedTable.Items = mappedColumns
-		storageTable.Columns = columnNames
+		mappedTable.Items = mappedItems
+		storageTable.Columns = columnsNames
 
 		mappedTables = append(mappedTables, mappedTable)
 		storageTables = append(storageTables, storageTable)
 	}
-
-	client := meta.(*KBCClient)
 
 	getWriterResponse, err := client.GetFromStorage(fmt.Sprintf("storage/components/keboola.wr-redshift-v2/configs/%s", writerID))
 
@@ -189,31 +207,29 @@ func resourceKeboolaAWSRedShiftWriterTablesCreate(d *schema.ResourceData, meta i
 		return extractError(err, getWriterResponse)
 	}
 
-	var awsredshiftWriter AWSRedShiftWriter
+	var awsredshiftwriter AWSRedShiftWriter
 
 	decoder := json.NewDecoder(getWriterResponse.Body)
-	err = decoder.Decode(&awsredshiftWriter)
+	err = decoder.Decode(&awsredshiftwriter)
 
 	if err != nil {
 		return err
 	}
+	awsredshiftwriter.Configuration.Parameters.Tables = mappedTables
+	awsredshiftwriter.Configuration.Storage.Input.Tables = storageTables
 
-	awsredshiftWriter.Configuration.Parameters.Tables = mappedTables
-	awsredshiftWriter.Configuration.Storage.Input.Tables = storageTables
-
-	awsredshiftConfigJSON, err := json.Marshal(awsredshiftWriter.Configuration)
+	awsredshiftConfigJSON, err := json.Marshal(awsredshiftwriter.Configuration)
 
 	if err != nil {
 		return err
 	}
+	updateAWSRedShiftForm := url.Values{}
+	updateAWSRedShiftForm.Add("configuration", string(awsredshiftConfigJSON))
+	updateAWSRedShiftForm.Add("changeDescription", "Update AWSRedshift tables")
 
-	updateAwsredshiftForm := url.Values{}
-	updateAwsredshiftForm.Add("configuration", string(awsredshiftConfigJSON))
-	updateAwsredshiftForm.Add("changeDescription", "Update Redshift tables")
+	updateAWSRedShiftBuffer := buffer.FromForm(updateAWSRedShiftForm)
 
-	updateAwsredshiftBuffer := buffer.FromForm(updateAwsredshiftForm)
-
-	updateResponse, err := client.PutToStorage(fmt.Sprintf("storage/components/keboola.wr-redshift-v2/configs/%s", writerID), updateAwsredshiftBuffer)
+	updateResponse, err := client.PutToStorage(fmt.Sprintf("storage/components/keboola.wr-redshift-v2/configs/%s", writerID), updateAWSRedShiftBuffer)
 
 	if hasErrors(err, updateResponse) {
 		return extractError(err, updateResponse)
@@ -221,19 +237,23 @@ func resourceKeboolaAWSRedShiftWriterTablesCreate(d *schema.ResourceData, meta i
 
 	d.SetId(writerID)
 
-	return resourceKeboolaAWSRedShiftWriterTablesRead(d, meta)
+	return resourceKeboolaAWSRedShiftTablesRead(d, meta)
 }
 
-func resourceKeboolaAWSRedShiftWriterTablesRead(d *schema.ResourceData, meta interface{}) error {
-	log.Println("[INFO] Reading AWS RedShift Writer Tables from Keboola.")
-
+//What does it do:
+// Its suppose to Read and compare what the terraform script has and what the keboola provider has.
+//When does it get called:
+// it gets called with update and read
+//Completed:
+// No
+func resourceKeboolaAWSRedShiftTablesRead(d *schema.ResourceData, meta interface{}) error {
+	log.Println("[INFO] Reading  AWS RedShift Tables from Keboola.")
 	if d.Id() == "" {
 		return nil
 	}
-
 	client := meta.(*KBCClient)
 
-	getAWSRedShiftWriterResponse, err := client.GetFromStorage(fmt.Sprintf("storage/components/keboola.keboola.wr-redshift-v2/configs/%s", d.Id()))
+	getAWSRedShiftWriterResponse, err := client.GetFromStorage(fmt.Sprintf("storage/components/keboola.wr-redshift-v2/configs/%s", d.Id()))
 
 	if hasErrors(err, getAWSRedShiftWriterResponse) {
 		if getAWSRedShiftWriterResponse.StatusCode == 404 {
@@ -254,17 +274,19 @@ func resourceKeboolaAWSRedShiftWriterTablesRead(d *schema.ResourceData, meta int
 	}
 
 	var tables []map[string]interface{}
+
 	storageInputTableMap := make(map[string]AWSRedShiftWriterStorageTable)
 
 	for _, storageInputTable := range awsredshiftWriter.Configuration.Storage.Input.Tables {
 		storageInputTableMap[storageInputTable.Source] = storageInputTable
 	}
+
 	for _, tableConfig := range awsredshiftWriter.Configuration.Parameters.Tables {
 		storageInputTable := storageInputTableMap[tableConfig.TableID]
 		tableDetails := map[string]interface{}{
-			"db_name":        tableConfig.DatabaseName,
+			"db_Name":        tableConfig.DatabaseName,
 			"export":         tableConfig.Export,
-			"table_id":       tableConfig.TableID,
+			"table_Id":       tableConfig.TableID,
 			"incremental":    tableConfig.Incremental,
 			"primary_key":    tableConfig.PrimaryKey,
 			"changed_since":  storageInputTable.ChangedSince,
@@ -273,22 +295,20 @@ func resourceKeboolaAWSRedShiftWriterTablesRead(d *schema.ResourceData, meta int
 			"where_values":   storageInputTable.WhereValues,
 		}
 
-		var columns []map[string]interface{}
-
+		var items []map[string]interface{}
 		for _, item := range tableConfig.Items {
-			columnDetails := map[string]interface{}{
+			itemDetails := map[string]interface{}{
 				"name":     item.Name,
-				"db_name":  item.DatabaseName,
+				"dbName":   item.DatabaseName,
 				"type":     item.Type,
 				"size":     item.Size,
 				"nullable": item.IsNullable,
 				"default":  item.DefaultValue,
 			}
 
-			columns = append(columns, columnDetails)
+			items = append(items, itemDetails)
 		}
-
-		tableDetails["column"] = columns
+		tableDetails["column"] = items
 
 		tables = append(tables, tableDetails)
 	}
@@ -298,10 +318,16 @@ func resourceKeboolaAWSRedShiftWriterTablesRead(d *schema.ResourceData, meta int
 	return nil
 }
 
+//What does it do:
+// Its suppose to update the table
+//When does it get called:
+// when the resourceKeboolaAWSRedShiftWriterTables gets called
+//Completed:
+// Yes
 func resourceKeboolaAWSRedShiftWriterTablesUpdate(d *schema.ResourceData, meta interface{}) error {
-	log.Println("[INFO] Updating AWS RedShift Writer Tables in Keboola.")
+	log.Println("[INFO] Updating  AWS RedShift table in Keboola.")
 
-	tables := d.Get("table").([]interface{})
+	tables := d.Get("table").(*schema.Set).List()
 
 	mappedTables := make([]AWSRedShiftWriterTable, 0, len(tables))
 	storageTables := make([]AWSRedShiftWriterStorageTable, 0, len(tables))
@@ -315,7 +341,6 @@ func resourceKeboolaAWSRedShiftWriterTablesUpdate(d *schema.ResourceData, meta i
 			TableID:      config["table_id"].(string),
 			Incremental:  config["incremental"].(bool),
 		}
-
 		if q := config["primary_key"]; q != nil {
 			mappedTable.PrimaryKey = AsStringArray(q.([]interface{}))
 		}
@@ -337,11 +362,12 @@ func resourceKeboolaAWSRedShiftWriterTablesUpdate(d *schema.ResourceData, meta i
 		if q := config["where_values"]; q != nil {
 			storageTable.WhereValues = AsStringArray(q.([]interface{}))
 		}
-		columnConfigs := config["column"].([]interface{})
-		mappedColumns := make([]AWSRedShiftWriterTableItem, 0, len(columnConfigs))
-		columnNames := make([]string, 0, len(columnConfigs))
-		for _, column := range columnConfigs {
-			columnConfig := column.(map[string]interface{})
+
+		itemConfigs := config["column"].([]interface{})
+		mappedColumns := make([]AWSRedShiftWriterTableItem, 0, len(itemConfigs))
+		columnNames := make([]string, 0, len(itemConfigs))
+		for _, item := range itemConfigs {
+			columnConfig := item.(map[string]interface{})
 
 			mappedColumn := AWSRedShiftWriterTableItem{
 				Name:         columnConfig["name"].(string),
@@ -354,6 +380,7 @@ func resourceKeboolaAWSRedShiftWriterTablesUpdate(d *schema.ResourceData, meta i
 
 			mappedColumns = append(mappedColumns, mappedColumn)
 			columnNames = append(columnNames, mappedColumn.Name)
+
 		}
 
 		mappedTable.Items = mappedColumns
@@ -389,13 +416,11 @@ func resourceKeboolaAWSRedShiftWriterTablesUpdate(d *schema.ResourceData, meta i
 		return err
 	}
 
-	updateCredentialsForm := url.Values{}
-	updateCredentialsForm.Add("name", d.Get("name").(string))
-	updateCredentialsForm.Add("description", d.Get("description").(string))
-	updateCredentialsForm.Add("configuration", string(awsredshiftConfigJSON))
-	updateCredentialsForm.Add("changeDescription", "Updated AWS RedShift Writer configuration via Terraform")
+	updateAWSRedShiftForm := url.Values{}
+	updateAWSRedShiftForm.Add("configuration", string(awsredshiftConfigJSON))
+	updateAWSRedShiftForm.Add("changeDescription", "Update RedShift tables")
 
-	updateAWSRedShiftBuffer := buffer.FromForm(updateCredentialsForm)
+	updateAWSRedShiftBuffer := buffer.FromForm(updateAWSRedShiftForm)
 
 	updateResponse, err := client.PutToStorage(fmt.Sprintf("storage/components/keboola.wr-redshift-v2/configs/%s", d.Id()), updateAWSRedShiftBuffer)
 
@@ -403,17 +428,25 @@ func resourceKeboolaAWSRedShiftWriterTablesUpdate(d *schema.ResourceData, meta i
 		return extractError(err, updateResponse)
 	}
 
-	return resourceKeboolaAWSRedShiftWriterTablesRead(d, meta)
+	return resourceKeboolaAWSRedShiftTablesRead(d, meta)
 }
 
+//What does it do:
+// it destory the terraform connection when the code block is mvoed from terraform
+//When does it get called:
+// From the resourceKeboolaAWSRedShiftWriterTables
+//Completed:
+// Yes
+
 func resourceKeboolaAWSRedShiftWriterTablesDelete(d *schema.ResourceData, meta interface{}) error {
-	log.Printf("[INFO] Clearing AWS RedShift Writer Tables in Keboola: %s", d.Id())
+	log.Printf("[INFO] Clearing AWS RedShift Tables in Keboola: %s", d.Id())
 
 	client := meta.(*KBCClient)
 
 	getWriterResponse, err := client.GetFromStorage(fmt.Sprintf("storage/components/keboola.wr-redshift-v2/configs/%s", d.Id()))
 
 	if hasErrors(err, getWriterResponse) {
+
 		return extractError(err, getWriterResponse)
 	}
 
@@ -424,13 +457,14 @@ func resourceKeboolaAWSRedShiftWriterTablesDelete(d *schema.ResourceData, meta i
 
 	if err != nil {
 		return err
+
 	}
 
 	var emptyTables []AWSRedShiftWriterTable
 	awsredshiftWriter.Configuration.Parameters.Tables = emptyTables
 
-	var emptyStorageTables []AWSRedShiftWriterStorageTable
-	awsredshiftWriter.Configuration.Storage.Input.Tables = emptyStorageTables
+	var emptyStorageTable []AWSRedShiftWriterStorageTable
+	awsredshiftWriter.Configuration.Storage.Input.Tables = emptyStorageTable
 
 	awsredshiftConfigJSON, err := json.Marshal(awsredshiftWriter.Configuration)
 
@@ -438,19 +472,18 @@ func resourceKeboolaAWSRedShiftWriterTablesDelete(d *schema.ResourceData, meta i
 		return err
 	}
 
-	clearAWSRedShiftTablesForm := url.Values{}
-	clearAWSRedShiftTablesForm.Add("configuration", string(awsredshiftConfigJSON))
-	clearAWSRedShiftTablesForm.Add("changeDescription", "Update AWS REDShift tables")
+	clearAWSRedShiftTableForm := url.Values{}
+	clearAWSRedShiftTableForm.Add("configuration", string(awsredshiftConfigJSON))
+	clearAWSRedShiftTableForm.Add("changeDescription", "Update AWSRedShift tables")
 
-	clearAWSRedShiftTablesBuffer := buffer.FromForm(clearAWSRedShiftTablesForm)
+	clearAWSRedShiftTablesBuffer := buffer.FromForm(clearAWSRedShiftTableForm)
 
 	clearResponse, err := client.PutToStorage(fmt.Sprintf("storage/components/keboola.wr-redshift-v2/configs/%s", d.Id()), clearAWSRedShiftTablesBuffer)
-
 	if hasErrors(err, clearResponse) {
 		return extractError(err, clearResponse)
 	}
-
-	d.SetId("")
-
+	if hasErrors(err, clearResponse) {
+		return extractError(err, clearResponse)
+	}
 	return nil
 }
