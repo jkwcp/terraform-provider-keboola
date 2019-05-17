@@ -442,9 +442,8 @@ func resourceKeboolaSQLServerWriterUpdate(d *schema.ResourceData, meta interface
 
 	sqlserverwriterCredentials := d.Get("sqlserver_db_parameters").(map[string]interface{})
 
+	sqlserverwriter.Configuration.Parameters.Database, err = mapSQLServerCredentialsToConfigurationDatabase(sqlserverwriterCredentials, client)
 
-		sqlserverwriter.Configuration.Parameters.Database, err = mapSQLServerCredentialsToConfigurationDatabase(sqlserverwriterCredentials, client)
-	
 	sqlserverConfigJSON, err := json.Marshal(sqlserverwriter.Configuration)
 
 	if err != nil {
