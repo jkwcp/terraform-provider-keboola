@@ -16,7 +16,11 @@ type AWSs3WriterDatabaseParameters struct {
 	AccessKeyId string `json:"accessKeyId"`
 	SecretKey   string `json:"#secretAccessKey"`
 	Bucket      string `json:"bucket"`
-	Prefix      string `json:"prefix"`
+}
+
+type AWSs3WriterDatabaseRowParameters struct {
+	Prefix string `json:"prefix"`
+	Name   string `json:"name"`
 }
 
 type AWSs3WriterStorageTable struct {
@@ -44,7 +48,7 @@ type Awss3WriterStorageTableBefore struct {
 	DirectionStorage Awss3parameters `json:"parameters"`
 }
 type AWSs3WriterProcessor struct {
-	Before []Awss3WriterStorageTableBefore `json:"before"`
+	Before []Awss3WriterStorageTableBefore `json:"before,omitempty"`
 }
 
 /*
@@ -59,18 +63,26 @@ type AWSs3WriterProcessorPara struct {
 	} `json:"before"`
 }
 */
-type AWSs3WriterConfiguration struct {
+type Rowsinfo struct {
+	Storage    AWSs3WriterStorage               `json:"storage,omitempty"`
+	Processor  AWSs3WriterProcessor             `json:"processors,omitempty"`
+	Parameters AWSs3WriterDatabaseRowParameters `json:"parameters"`
+	id         string                           `json:"parameter`
+}
+type AWSs3WriterConfigurationParameters struct {
 	Parameters AWSs3WriterDatabaseParameters `json:"parameters"`
-	Storage    AWSs3WriterStorage            `json:"storage,omitempty"`
-	Processors AWSs3WriterProcessor          `json:"processors"`
+
 	//	Component AWSs3WriterProcessorDef `json:"component,omitempty"`
 }
-
+type AWSs3WriterConfigurationRows struct {
+	RowsInfo Rowsinfo
+}
 type AWSs3Writer struct {
-	ID            string                   `json:"id,omitempty"`
-	Name          string                   `json:"name"`
-	Description   string                   `json:"description"`
-	Configuration AWSs3WriterConfiguration `json:"configuration"`
+	ID                                 string                             `json:"id,omitempty"`
+	Name                               string                             `json:"name"`
+	Description                        string                             `json:"description"`
+	AWSs3WriterConfigurationParameters AWSs3WriterConfigurationParameters `json:"configuration"`
+	ConfigurationRow                   AWSs3WriterConfigurationRows       `json:"configuration"`
 }
 
 //What does it do:
@@ -114,10 +126,6 @@ func resourceKeboolaAWSs3Writer() *schema.Resource {
 						"secretaccesskey": {
 							Type:     schema.TypeString,
 							Required: true,
-						},
-						"prefix": {
-							Type:     schema.TypeString,
-							Optional: true,
 						},
 					},
 				},
@@ -235,9 +243,6 @@ func mapAWSs3CredentialsToConfiguration(source map[string]interface{}, client *K
 
 		Parameters.SecretKey, err = S3BucketencyrptPassword(val.(string), client)
 	}
-	if val, ok := source["prefix"]; ok {
-		Parameters.Prefix = val.(string)
-	}
 
 	return Parameters, err
 }
@@ -263,7 +268,7 @@ func S3BucketencyrptPassword(value string, client *KBCClient) (str_body string, 
 //Completed:
 // Yes.
 func creates3AWSCredentialsConfiguration(awss3Credentials map[string]interface{}, createdawss3ID string, client *KBCClient) error {
-	awss3WriterConfiguration := AWSs3WriterConfiguration{}
+	awss3WriterConfiguration := AWSs3WriterConfigurationParameters{}
 	var err error
 	err = nil
 	awss3WriterConfiguration.Parameters, err = mapAWSs3CredentialsToConfiguration(awss3Credentials, client)
@@ -320,18 +325,17 @@ func resourceKeboolaAWSs3WriterRead(d *schema.ResourceData, meta interface{}) er
 	d.Set("id", awss3writer.ID)
 	d.Set("name", awss3writer.Name)
 	d.Set("description", awss3writer.Description)
+	if d.Get("provision_new_database") == false {
+		dbParameters := make(map[string]interface{})
 
-	dbParameters := make(map[string]interface{})
+		databaseCredentials := awss3writer.AWSs3WriterConfigurationParameters.Parameters
 
-	databaseCredentials := awss3writer.Configuration.Parameters
+		dbParameters["accesskeyid"] = databaseCredentials.AccessKeyId
+		dbParameters["#secretAccessKey"] = databaseCredentials.SecretKey
+		dbParameters["bucket"] = databaseCredentials.Bucket
 
-	dbParameters["accesskeyid"] = databaseCredentials.AccessKeyId
-	dbParameters["#secretAccessKey"] = databaseCredentials.SecretKey
-	dbParameters["bucket"] = databaseCredentials.Bucket
-	dbParameters["prefix"] = databaseCredentials.Prefix
-
-	d.Set("s3_wr_parameters", dbParameters)
-
+		d.Set("s3_wr_parameters", dbParameters)
+	}
 	return nil
 }
 
@@ -363,9 +367,9 @@ func resourceKeboolaAWSs3WriterUpdate(d *schema.ResourceData, meta interface{}) 
 
 	awss3Credentials := d.Get("s3_wr_parameters").(map[string]interface{})
 
-	awss3Writer.Configuration.Parameters, err = mapAWSs3CredentialsToConfiguration(awss3Credentials, client)
+	awss3Writer.AWSs3WriterConfigurationParameters.Parameters, err = mapAWSs3CredentialsToConfiguration(awss3Credentials, client)
 
-	awss3ConfigJSON, err := json.Marshal(awss3Writer.Configuration)
+	awss3ConfigJSON, err := json.Marshal(awss3Writer.AWSs3WriterConfigurationParameters)
 
 	if err != nil {
 		return err
