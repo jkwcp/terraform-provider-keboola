@@ -14,15 +14,15 @@ import (
 )
 
 type AWSRedshiftWriterDatabaseParameters struct {
-	HostName          string         `json:"host"`
-	Database          string         `json:"database"`
-	Password          string         `json:"password,omitempty"`
-	EncryptedPassword string         `json:"#password,omitempty"`
-	Username          string         `json:"user"`
-	Schema            string         `json:"schema"`
-	Port              string         `json:"port"`
-	Driver            string         `json:"driver"`
-	SSH               AWSRedShiftSSH `json:"ssh"`
+	HostName          string    `json:"host"`
+	Database          string    `json:"database"`
+	Password          string    `json:"password,omitempty"`
+	EncryptedPassword string    `json:"#password,omitempty"`
+	Username          string    `json:"user"`
+	Schema            string    `json:"schema"`
+	Port              string    `json:"port"`
+	Driver            string    `json:"driver"`
+	SSH               SSHTunnel `json:"ssh"`
 }
 
 type AWSRedShiftWriterTableItem struct {
@@ -67,12 +67,7 @@ type AWSRedShiftWriterConfiguration struct {
 	Parameters AWSRedShiftWriterParameters `json:"parameters"`
 	Storage    AWSRedShiftWriterStorage    `json:"storage,omitempty"`
 }
-type AWSRedShiftSSH struct {
-	Enabled bool   `json:"enabled"`
-	SSHHost string `json:"sshHost"`
-	User    string `json:"user"`
-	SSHPort string `json:"sshPort"`
-}
+
 type ProvisionedAWSRedShiftResponse struct {
 	Status      string `json:"status"`
 	Credentials struct {
@@ -173,6 +168,22 @@ func resourceKeboolaAWSRedshiftWriter() *schema.Resource {
 						"sshPort": {
 							Type:     schema.TypeString,
 							Optional: true,
+						},
+
+						"Keys": {
+							Type:     schema.TypeMap,
+							Optional: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"publickey": {
+										Type:     schema.TypeString,
+										Optional: true,
+									}, "hashpassword": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+								},
+							},
 						},
 						////////////////////SSH////////////////////
 
@@ -280,6 +291,11 @@ func createAWSRedShiftAccessToken(AWSRedShiftID string, client *KBCClient) error
 // It gets called for the resource update and the creation
 //Completed:
 // Yes.
+type Payload struct {
+	ConfigData []interface {
+	} `json:"configData"`
+}
+
 func mapAWSRedShiftCredentialsToConfiguration(source map[string]interface{}, client *KBCClient) (AWSRedshiftWriterDatabaseParameters, error) {
 	databaseParameters := AWSRedshiftWriterDatabaseParameters{}
 	var err error
@@ -306,7 +322,9 @@ func mapAWSRedShiftCredentialsToConfiguration(source map[string]interface{}, cli
 	if val, ok := source["enabled"]; ok {
 
 		databaseParameters.SSH.Enabled, err = strconv.ParseBool(val.(string))
-
+		databaseParameters.SSH.SSHKey, err = client.PostToDockerCreateSSH()
+		databaseParameters.SSH.SSHKey.PrivateKeyEncrypted, err = RedShiftencyrptPassword(databaseParameters.SSH.SSHKey.PrivateKeyEncrypted, client)
+		databaseParameters.SSH.SSHKey.PrivateKey = ""
 	}
 	if val, ok := source["sshHost"]; ok {
 		databaseParameters.SSH.SSHHost = val.(string)
@@ -317,6 +335,7 @@ func mapAWSRedShiftCredentialsToConfiguration(source map[string]interface{}, cli
 	if val, ok := source["sshPort"]; ok {
 		databaseParameters.SSH.SSHPort = val.(string)
 	}
+
 	databaseParameters.Driver = "redshift"
 
 	return databaseParameters, err
@@ -342,6 +361,7 @@ func RedShiftencyrptPassword(value string, client *KBCClient) (str_body string, 
 //when the create method gets called it creates a new configuratiuon
 //Completed:
 // Yes.
+
 func createRedShiftAWSCredentialsConfiguration(awsredshiftCredentials map[string]interface{}, createdawsredshiftID string, client *KBCClient) error {
 	var err error
 	awsredshiftWriterConfiguration := AWSRedShiftWriterConfiguration{}
