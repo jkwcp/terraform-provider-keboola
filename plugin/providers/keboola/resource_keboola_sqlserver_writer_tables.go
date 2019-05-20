@@ -321,9 +321,7 @@ func resourceKeboolaSQLServerTablesRead(d *schema.ResourceData, meta interface{}
 
 	d.Set("table", tables)
 	if d.Get("auto_run") == true {
-		sqlserverConfigJSON, err := json.Marshal(sqlserverWriter)
-
-		SqlServerRunResponse, err := client.PostToDockerRun("keboola.wr-db-mssql-v2", d.Id(), sqlserverConfigJSON)
+		SqlServerRunResponse, err := client.PostToDockerRun("keboola.wr-db-mssql-v2", d.Id())
 		if hasErrors(err, SqlServerRunResponse) {
 			return err
 		}

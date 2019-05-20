@@ -316,9 +316,7 @@ func resourceKeboolaMySQLTablesRead(d *schema.ResourceData, meta interface{}) er
 
 	d.Set("table", tables)
 	if d.Get("auto_run") == true {
-		mysqlConfigJSON, err := json.Marshal(mysqlWriter)
-
-		MySqlWriterRunResponse, err := client.PostToDockerRun("keboola.wr-db-mysql", d.Id(), mysqlConfigJSON)
+		MySqlWriterRunResponse, err := client.PostToDockerRun("keboola.wr-db-mysql", d.Id())
 		if hasErrors(err, MySqlWriterRunResponse) {
 			return extractError(err, MySqlWriterRunResponse)
 		}

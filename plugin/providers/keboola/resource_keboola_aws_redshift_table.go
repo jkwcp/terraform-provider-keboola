@@ -323,9 +323,7 @@ func resourceKeboolaAWSRedShiftTablesRead(d *schema.ResourceData, meta interface
 
 	d.Set("table", tables)
 	if d.Get("auto_run") == true {
-		AWSRedShiftConfigJSON, err := json.Marshal(awsredshiftWriter)
-
-		MySqlWriterRunResponse, err := client.PostToDockerRun("keboola.wr-redshift-v2", d.Id(), AWSRedShiftConfigJSON)
+		MySqlWriterRunResponse, err := client.PostToDockerRun("keboola.wr-redshift-v2", d.Id())
 		if hasErrors(err, MySqlWriterRunResponse) {
 			return extractError(err, MySqlWriterRunResponse)
 		}

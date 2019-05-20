@@ -273,11 +273,10 @@ func resourceKeboolaAWSS3BucketTablesRead(d *schema.ResourceData, meta interface
 	}
 	d.Set("tables", tables)
 	if d.Get("auto_run") == true {
-		awss3ConfigJSON, err := json.Marshal(awss3BucketshiftWriter)
 
-		awss3ConfigJSONRunResponse, err := client.PostToDockerRun("keboola.wr-aws-s3", d.Id(), awss3ConfigJSON)
-		if hasErrors(err, awss3ConfigJSONRunResponse) {
-			return extractError(err, awss3ConfigJSONRunResponse)
+		awss3ConfigRunResponse, err := client.PostToDockerRun("keboola.wr-aws-s3", d.Id())
+		if hasErrors(err, awss3ConfigRunResponse) {
+			return extractError(err, awss3ConfigRunResponse)
 		}
 	}
 	return nil
