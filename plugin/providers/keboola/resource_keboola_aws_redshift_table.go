@@ -11,11 +11,11 @@ import (
 )
 
 //What does it do:
-//It creates a resource for sqlwriter talbe
+//It creates a resource for AWS Redshift talbe
 //When does it get called:
-//it gets called from the propvider when the terraform script calls the provider
+//it gets called from the provider when the terraform script is executed and it calls the provider
 //Completed:
-// No
+// Yes
 func resourceKeboolaAWSRedShiftWriterTable() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceKeboolaAWSRedShiftWriterTablesCreate,
@@ -51,12 +51,6 @@ func resourceKeboolaAWSRedShiftWriterTable() *schema.Resource {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
-						/*
-							"load_type": {
-								Type:     schema.TypeString,
-								Optional: true,
-							},
-						*/
 						"incremental": {
 							Type:     schema.TypeBool,
 							Optional: true,
@@ -134,11 +128,11 @@ func resourceKeboolaAWSRedShiftWriterTable() *schema.Resource {
 }
 
 //What does it do:
-// Its suppose to create the table for the the RedShfit componeent
+// Its creates the table for the the RedShfit componeent
 //When does it get called:
 // It gets called when the the resourceKeboolaAWSRedShiftWriterTables calls it
 //Completed:
-// No
+// YES
 func resourceKeboolaAWSRedShiftWriterTablesCreate(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Creating AWS RedShift Tables in Keboola")
 
@@ -176,11 +170,7 @@ func resourceKeboolaAWSRedShiftWriterTablesCreate(d *schema.ResourceData, meta i
 		if val, ok := config["where_operator"]; ok {
 			storageTable.WhereOperator = val.(string)
 		}
-		/*
-			if val, ok := config["load_type"]; ok {
-				storageTable.LoadType = val.(string)
-			}
-		*/
+
 		if q := config["where_values"]; q != nil {
 			storageTable.WhereValues = AsStringArray(q.([]interface{}))
 		}
@@ -249,9 +239,9 @@ func resourceKeboolaAWSRedShiftWriterTablesCreate(d *schema.ResourceData, meta i
 }
 
 //What does it do:
-// Its suppose to Read and compare what the terraform script has and what the keboola provider has.
+// Its suppose to Read and compare what is on the platform and what the terraform script has.
 //When does it get called:
-// it gets called with update and read
+// it gets called with resourceKeboolaAWSRedShiftWriterTablesUpdate and resourceKeboolaAWSRedShiftWriterTablesCreate
 //Completed:
 // No
 func resourceKeboolaAWSRedShiftTablesRead(d *schema.ResourceData, meta interface{}) error {
@@ -332,7 +322,7 @@ func resourceKeboolaAWSRedShiftTablesRead(d *schema.ResourceData, meta interface
 }
 
 //What does it do:
-// Its suppose to update the table
+// Its suppose to update the table if any changes where made on the platform and on the terraform script
 //When does it get called:
 // when the resourceKeboolaAWSRedShiftWriterTables gets called
 //Completed:
@@ -368,11 +358,7 @@ func resourceKeboolaAWSRedShiftWriterTablesUpdate(d *schema.ResourceData, meta i
 		if val, ok := config["where_column"]; ok {
 			storageTable.WhereColumn = val.(string)
 		}
-		/*
-			if val, ok := config["load_type"]; ok {
-				storageTable.LoadType = val.(string)
-			}
-		*/
+
 		if val, ok := config["where_operator"]; ok {
 			storageTable.WhereOperator = val.(string)
 		}
@@ -450,7 +436,7 @@ func resourceKeboolaAWSRedShiftWriterTablesUpdate(d *schema.ResourceData, meta i
 }
 
 //What does it do:
-// it destory the terraform connection when the code block is mvoed from terraform
+// it destory the terraform connection when the code block is moveded from terraform
 //When does it get called:
 // From the resourceKeboolaAWSRedShiftWriterTables
 //Completed:
