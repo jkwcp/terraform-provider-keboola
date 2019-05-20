@@ -1,5 +1,6 @@
 package keboola
 
+// this isn't complete can't update. Can Create Tables and delete
 import (
 	"encoding/json"
 	"fmt"
@@ -10,44 +11,6 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/plmwong/terraform-provider-keboola/plugin/providers/keboola/buffer"
 )
-
-/*
-type Rows struct {
-	Row struct {
-		ID int `json:"id"`
-	} `json:"rows"`
-}
-*/
-type RowInfo struct {
-	Row []struct {
-		ID            string `json:"id"`
-		Name          string `json:"name"`
-		Description   string `json:"description"`
-		Configuration struct {
-			Parameters struct {
-				Prefix string `json:"prefix"`
-			} `json:"parameters"`
-			Storage struct {
-				Input struct {
-					Tables []struct {
-						Source      string `json:"source"`
-						Destination string `json:"destination"`
-					} `json:"tables"`
-				} `json:"input"`
-			} `json:"storage"`
-			Processors struct {
-				Before []struct {
-					Definition struct {
-						Component string `json:"component"`
-					} `json:"definition"`
-					Parameters struct {
-						Direction string `json:"direction"`
-					} `json:"parameters"`
-				} `json:"before"`
-			} `json:"processors"`
-		} `json:"configuration"`
-	} `json:"rows"`
-}
 
 func resourceKeboolaAWSS3Bucket() *schema.Resource {
 	return &schema.Resource{
@@ -115,7 +78,7 @@ func resourceKeboolaAWSS3BucketTablesCreate(d *schema.ResourceData, meta interfa
 
 	awss3Writer.ConfigurationRow.RowsInfo.Storage.Input.Tables = storageTables
 	awss3Writer.ConfigurationRow.RowsInfo.Processor = Procosser
-	//Need to look at
+
 	awss3Row := d.Get("s3_row_parameters").(map[string]interface{})
 	awss3Writer.ConfigurationRow.RowsInfo.Parameters, err = mapAWSs3CredentialsToRowConfiguration(awss3Row, client)
 	if err != nil {

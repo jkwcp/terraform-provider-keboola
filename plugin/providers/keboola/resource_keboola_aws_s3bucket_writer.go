@@ -1,6 +1,6 @@
 package keboola
 
-// this isn't complete
+// this is COmplete
 import (
 	"encoding/json"
 	"fmt"

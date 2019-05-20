@@ -48,9 +48,8 @@ type AWSRedShiftWriterParameters struct {
 }
 
 type AWSRedShiftWriterStorageTable struct {
-	Source      string `json:"source"`
-	Destination string `json:"destination"`
-	//	LoadType      string   `json:"load_type"`
+	Source        string   `json:"source"`
+	Destination   string   `json:"destination"`
 	Columns       []string `json:"columns"`
 	ChangedSince  string   `json:"changed_since,omitempty"`
 	WhereColumn   string   `json:"where_column,omitempty"`
@@ -202,7 +201,7 @@ func resourceKeboolaAWSRedshiftWriter() *schema.Resource {
 //What does it do:
 // It creates a AWS Redshift writer component on keboola and intializing the valribles you put to the kebools terraform script.
 //When does it get called:
-// It called when the terraform script has a new resource name.
+// It called when resourceKeboolaAWSRedshiftWriter func calls it
 //Completed:
 // Yes.
 func resourceKeboolaAWSRedshiftWriterCreate(d *schema.ResourceData, meta interface{}) error {
@@ -381,7 +380,7 @@ func createRedShiftAWSCredentialsConfiguration(awsredshiftCredentials map[string
 //What does it do:
 //Aws Redshift Read allows you to see what is different from the terraform script and keboola platform and tells us if any changes where made
 //When does it get called:
-// It gets called for the resource update and the createRedShiftAWSCredentialsConfiguration
+// It gets called for the resource resourceKeboolaAWSRedShiftWriterUpdate and the resourceKeboolaAWSRedShiftWriterCreate
 //Completed:
 // Yes.
 func resourceKeboolaAWSRedShiftWriterRead(d *schema.ResourceData, meta interface{}) error {

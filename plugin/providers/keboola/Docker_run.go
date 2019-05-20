@@ -6,6 +6,7 @@ import (
 	"net/http"
 )
 
+// Allows the keboola platform to automatically run the COmponeent when uploaded via terraform to keboola.
 func (c *KBCClient) PostToDockerRun(ComponentID string, ConfigID string) (*http.Response, error) {
 	client := &http.Client{}
 

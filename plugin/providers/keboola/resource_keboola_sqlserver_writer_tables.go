@@ -1,5 +1,6 @@
 package keboola
 
+//Completed
 import (
 	"encoding/json"
 	"fmt"
@@ -11,11 +12,11 @@ import (
 )
 
 //What does it do:
-//It creates a resource for sqlwriter talbe
+//It It creates a map and allows the create Read update and delete functions to modify it
 //When does it get called:
-//it gets called from the propvider when the terraform script calls the provider
+//it gets called from the provider
 //Completed:
-// No
+//Yes
 func resourceKeboolaSQLServerWriterTables() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceKeboolaSQLServerWriterTablesCreate,
@@ -51,12 +52,6 @@ func resourceKeboolaSQLServerWriterTables() *schema.Resource {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
-						/*
-							"load_type": {
-								Type:     schema.TypeString,
-								Optional: true,
-							},
-						*/
 						"incremental": {
 							Type:     schema.TypeBool,
 							Optional: true,
@@ -157,7 +152,6 @@ func resourceKeboolaSQLServerWriterTablesCreate(d *schema.ResourceData, meta int
 			Export:       config["export"].(bool),
 			TableID:      config["table_id"].(string),
 			Incremental:  config["incremental"].(bool),
-			//	LoadType:     config["load_type"].(string),
 		}
 
 		if q := config["primary_key"]; q != nil {
@@ -246,11 +240,11 @@ func resourceKeboolaSQLServerWriterTablesCreate(d *schema.ResourceData, meta int
 }
 
 //What does it do:
-// Its suppose to Read and compare what the terraform script has and what the keboola provider has.
+// Its suppose to Read and compare what the terraform script has and what the keboola provider has. Also it has an auto run option which allows you to run the process automatically
 //When does it get called:
-// it gets called with update and read
+// it gets called with resourceKeboolaSQLServerWriterTableCreate and resourceKeboolaSQLServerWriterTableUpdate
 //Completed:
-// No
+// Yes
 func resourceKeboolaSQLServerTablesRead(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Reading SQL Serverr Writer Tables from Keboola.")
 	if d.Id() == "" {
@@ -330,9 +324,9 @@ func resourceKeboolaSQLServerTablesRead(d *schema.ResourceData, meta interface{}
 }
 
 //What does it do:
-// Its suppose to update the table
+// Its suppose to update the table and inforamation in the table inforamtion
 //When does it get called:
-// when the resourceKeboolaSQLServerWriterTables gets called
+// when the resourceKeboolaSQLServerWriterTables calls it
 //Completed:
 // Yes
 func resourceKeboolaSQLServerWriterTablesUpdate(d *schema.ResourceData, meta interface{}) error {
@@ -443,7 +437,7 @@ func resourceKeboolaSQLServerWriterTablesUpdate(d *schema.ResourceData, meta int
 }
 
 //What does it do:
-// it destory the terraform connection when the code block is mvoed from terraform
+// it destory the terraform connection when the code block is removed from terraform
 //When does it get called:
 // From the resourceKeboolaSQLServerWriterTables
 //Completed:

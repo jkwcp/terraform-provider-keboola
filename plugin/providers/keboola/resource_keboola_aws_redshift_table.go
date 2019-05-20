@@ -239,7 +239,7 @@ func resourceKeboolaAWSRedShiftWriterTablesCreate(d *schema.ResourceData, meta i
 }
 
 //What does it do:
-// Its suppose to Read and compare what is on the platform and what the terraform script has.
+// Its suppose to Read and compare what is on the platform and what the terraform script has.  Also it has an auto run option which allows you to run the process automatically
 //When does it get called:
 // it gets called with resourceKeboolaAWSRedShiftWriterTablesUpdate and resourceKeboolaAWSRedShiftWriterTablesCreate
 //Completed:
