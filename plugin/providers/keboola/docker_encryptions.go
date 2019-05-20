@@ -19,7 +19,7 @@ func (c *KBCClient) PostToDockerEncrypt(componentID string, jsonpayload []byte, 
 	if err != nil {
 		return nil, err
 	}
-
+	req.Header.Set("X-Storageapi-Token", c.APIKey)
 	req.Header.Add("Content-Type", "text/plain")
 	return client.Do(req)
 }
@@ -40,4 +40,18 @@ func (c *KBCClient) PostToDockerCreateSSH() (key Keys, err error) {
 	key = Keys{}
 	json.Unmarshal(resp_body, &key)
 	return key, err
+}
+func encyrptPassword(componentID string, value string, client *KBCClient) (str_body string, err error) {
+	body := []byte(value)
+	projectID, err := ProjectID(client)
+
+	createResponseConfig, err := client.PostToDockerEncrypt(componentID, body, projectID)
+	defer createResponseConfig.Body.Close()
+	resp_body, err := ioutil.ReadAll(createResponseConfig.Body)
+
+	if hasErrors(err, createResponseConfig) {
+		return "", err
+	}
+	str_body = string(resp_body)
+	return str_body, nil
 }
