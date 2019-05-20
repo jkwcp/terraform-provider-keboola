@@ -4,7 +4,6 @@ package keboola
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/url"
 
@@ -20,7 +19,6 @@ type AWSs3WriterDatabaseParameters struct {
 
 type AWSs3WriterDatabaseRowParameters struct {
 	Prefix string `json:"prefix"`
-	Name   string `json:"name"`
 }
 
 type AWSs3WriterStorageTable struct {
@@ -51,31 +49,18 @@ type AWSs3WriterProcessor struct {
 	Before []Awss3WriterStorageTableBefore `json:"before,omitempty"`
 }
 
-/*
-type AWSs3WriterProcessorDef struct {
-	Before struct {
-		Processorsdefinition []Awss3Definition `json:"definition"`
-	} `json:"before"`
-}
-type AWSs3WriterProcessorPara struct {
-	Before struct {
-		Processorsparameters []Awss3parameters `json: "parameters"`
-	} `json:"before"`
-}
-*/
 type Rowsinfo struct {
 	Storage    AWSs3WriterStorage               `json:"storage,omitempty"`
 	Processor  AWSs3WriterProcessor             `json:"processors,omitempty"`
 	Parameters AWSs3WriterDatabaseRowParameters `json:"parameters"`
-	id         string                           `json:"parameter`
+	id         string                           `json:"id"`
+	name       string                           `json:"name"`
 }
 type AWSs3WriterConfigurationParameters struct {
 	Parameters AWSs3WriterDatabaseParameters `json:"parameters"`
-
-	//	Component AWSs3WriterProcessorDef `json:"component,omitempty"`
 }
 type AWSs3WriterConfigurationRows struct {
-	RowsInfo Rowsinfo
+	RowsInfo Rowsinfo `json:"rows,omitempty"`
 }
 type AWSs3Writer struct {
 	ID                                 string                             `json:"id,omitempty"`
@@ -241,24 +226,10 @@ func mapAWSs3CredentialsToConfiguration(source map[string]interface{}, client *K
 	}
 	if val, ok := source["secretaccesskey"]; ok {
 
-		Parameters.SecretKey, err = S3BucketencyrptPassword(val.(string), client)
+		Parameters.SecretKey, err = encyrptPassword("keboola.wr-aws-s3", val.(string), client)
 	}
 
 	return Parameters, err
-}
-func S3BucketencyrptPassword(value string, client *KBCClient) (str_body string, err error) {
-	body := []byte(value)
-	projectID, err := ProjectID(client)
-	fmt.Println(projectID)
-	createResponseConfig, err := client.PostToDockerEncrypt("keboola.wr-aws-s3", body, projectID)
-	defer createResponseConfig.Body.Close()
-	resp_body, err := ioutil.ReadAll(createResponseConfig.Body)
-
-	if hasErrors(err, createResponseConfig) {
-		return "", err
-	}
-	str_body = string(resp_body)
-	return str_body, nil
 }
 
 //What does it do:

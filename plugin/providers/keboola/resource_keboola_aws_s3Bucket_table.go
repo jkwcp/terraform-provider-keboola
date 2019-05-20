@@ -64,6 +64,11 @@ func resourceKeboolaAWSS3Bucket() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
+			"auto_run": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
 
 			"name": {
 				Type:     schema.TypeString,
@@ -116,6 +121,8 @@ func resourceKeboolaAWSS3BucketTablesCreate(d *schema.ResourceData, meta interfa
 	if err != nil {
 		return err
 	}
+
+	awss3Writer.ConfigurationRow.RowsInfo.name = d.Get("name").(string)
 
 	awss3WriterConfigJSON, err := json.Marshal(awss3Writer.ConfigurationRow.RowsInfo)
 	if err != nil {
@@ -180,9 +187,6 @@ func mapAWSs3CredentialsToRowConfiguration(source map[string]interface{}, client
 	err = nil
 	if val, ok := source["prefix"]; ok {
 		Parameters.Prefix = val.(string)
-	}
-	if val, ok := source["name"]; ok {
-		Parameters.Name = val.(string)
 	}
 
 	return Parameters, err
@@ -268,7 +272,14 @@ func resourceKeboolaAWSS3BucketTablesRead(d *schema.ResourceData, meta interface
 		d.Set("s3_row_parameters", dbParameters)
 	}
 	d.Set("tables", tables)
+	if d.Get("auto_run") == true {
+		awss3ConfigJSON, err := json.Marshal(awss3BucketshiftWriter)
 
+		awss3ConfigJSONRunResponse, err := client.PostToDockerRun("keboola.wr-aws-s3", d.Id(), awss3ConfigJSON)
+		if hasErrors(err, awss3ConfigJSONRunResponse) {
+			return extractError(err, awss3ConfigJSONRunResponse)
+		}
+	}
 	return nil
 }
 

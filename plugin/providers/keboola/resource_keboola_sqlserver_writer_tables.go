@@ -28,6 +28,11 @@ func resourceKeboolaSQLServerWriterTables() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
+			"auto_run": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
 			"table": {
 				Type:     schema.TypeSet,
 				Optional: true,
@@ -315,7 +320,14 @@ func resourceKeboolaSQLServerTablesRead(d *schema.ResourceData, meta interface{}
 	}
 
 	d.Set("table", tables)
+	if d.Get("auto_run") == true {
+		sqlserverConfigJSON, err := json.Marshal(sqlserverWriter)
 
+		SqlServerRunResponse, err := client.PostToDockerRun("keboola.wr-db-mssql-v2", d.Id(), sqlserverConfigJSON)
+		if hasErrors(err, SqlServerRunResponse) {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -364,7 +376,7 @@ func resourceKeboolaSQLServerWriterTablesUpdate(d *schema.ResourceData, meta int
 			storageTable.WhereValues = AsStringArray(q.([]interface{}))
 		}
 
-		itemConfigs := config["items"].([]interface{})
+		itemConfigs := config["column"].([]interface{})
 		mappedColumns := make([]SQLServerWriterTableItem, 0, len(itemConfigs))
 		columnNames := make([]string, 0, len(itemConfigs))
 		for _, item := range itemConfigs {

@@ -28,6 +28,11 @@ func resourceKeboolaAWSRedShiftWriterTable() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
+			"auto_run": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
 			"table": {
 				Type:     schema.TypeSet,
 				Optional: true,
@@ -152,7 +157,6 @@ func resourceKeboolaAWSRedShiftWriterTablesCreate(d *schema.ResourceData, meta i
 			Export:       config["export"].(bool),
 			TableID:      config["table_id"].(string),
 			Incremental:  config["incremental"].(bool),
-			//	LoadType:     config["load_type"].(string),
 		}
 
 		if q := config["primary_key"]; q != nil {
@@ -172,7 +176,11 @@ func resourceKeboolaAWSRedShiftWriterTablesCreate(d *schema.ResourceData, meta i
 		if val, ok := config["where_operator"]; ok {
 			storageTable.WhereOperator = val.(string)
 		}
-
+		/*
+			if val, ok := config["load_type"]; ok {
+				storageTable.LoadType = val.(string)
+			}
+		*/
 		if q := config["where_values"]; q != nil {
 			storageTable.WhereValues = AsStringArray(q.([]interface{}))
 		}
@@ -314,7 +322,14 @@ func resourceKeboolaAWSRedShiftTablesRead(d *schema.ResourceData, meta interface
 	}
 
 	d.Set("table", tables)
+	if d.Get("auto_run") == true {
+		AWSRedShiftConfigJSON, err := json.Marshal(awsredshiftWriter)
 
+		MySqlWriterRunResponse, err := client.PostToDockerRun("keboola.wr-redshift-v2", d.Id(), AWSRedShiftConfigJSON)
+		if hasErrors(err, MySqlWriterRunResponse) {
+			return extractError(err, MySqlWriterRunResponse)
+		}
+	}
 	return nil
 }
 
@@ -355,6 +370,11 @@ func resourceKeboolaAWSRedShiftWriterTablesUpdate(d *schema.ResourceData, meta i
 		if val, ok := config["where_column"]; ok {
 			storageTable.WhereColumn = val.(string)
 		}
+		/*
+			if val, ok := config["load_type"]; ok {
+				storageTable.LoadType = val.(string)
+			}
+		*/
 		if val, ok := config["where_operator"]; ok {
 			storageTable.WhereOperator = val.(string)
 		}

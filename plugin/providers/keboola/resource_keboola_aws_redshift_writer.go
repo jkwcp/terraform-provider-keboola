@@ -4,7 +4,6 @@ package keboola
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/url"
 	"strconv"
@@ -49,8 +48,9 @@ type AWSRedShiftWriterParameters struct {
 }
 
 type AWSRedShiftWriterStorageTable struct {
-	Source        string   `json:"source"`
-	Destination   string   `json:"destination"`
+	Source      string `json:"source"`
+	Destination string `json:"destination"`
+	//	LoadType      string   `json:"load_type"`
 	Columns       []string `json:"columns"`
 	ChangedSince  string   `json:"changed_since,omitempty"`
 	WhereColumn   string   `json:"where_column,omitempty"`
@@ -317,13 +317,13 @@ func mapAWSRedShiftCredentialsToConfiguration(source map[string]interface{}, cli
 		databaseParameters.Username = val.(string)
 	}
 	if val, ok := source["hashed_password"]; ok {
-		databaseParameters.EncryptedPassword, err = RedShiftencyrptPassword(val.(string), client)
+		databaseParameters.EncryptedPassword, err = encyrptPassword("keboola.wr-redshift-v2", val.(string), client)
 	}
 	if val, ok := source["enabled"]; ok {
 
 		databaseParameters.SSH.Enabled, err = strconv.ParseBool(val.(string))
 		databaseParameters.SSH.SSHKey, err = client.PostToDockerCreateSSH()
-		databaseParameters.SSH.SSHKey.PrivateKeyEncrypted, err = RedShiftencyrptPassword(databaseParameters.SSH.SSHKey.PrivateKeyEncrypted, client)
+		databaseParameters.SSH.SSHKey.PrivateKeyEncrypted, err = encyrptPassword("keboola.wr-redshift-v2", databaseParameters.SSH.SSHKey.PrivateKeyEncrypted, client)
 		databaseParameters.SSH.SSHKey.PrivateKey = ""
 	}
 	if val, ok := source["sshHost"]; ok {
@@ -339,20 +339,6 @@ func mapAWSRedShiftCredentialsToConfiguration(source map[string]interface{}, cli
 	databaseParameters.Driver = "redshift"
 
 	return databaseParameters, err
-}
-func RedShiftencyrptPassword(value string, client *KBCClient) (str_body string, err error) {
-	body := []byte(value)
-	projectID, err := ProjectID(client)
-
-	createResponseConfig, err := client.PostToDockerEncrypt("keboola.wr-redshift-v2", body, projectID)
-	defer createResponseConfig.Body.Close()
-	resp_body, err := ioutil.ReadAll(createResponseConfig.Body)
-
-	if hasErrors(err, createResponseConfig) {
-		return "", err
-	}
-	str_body = string(resp_body)
-	return str_body, nil
 }
 
 //What does it do:

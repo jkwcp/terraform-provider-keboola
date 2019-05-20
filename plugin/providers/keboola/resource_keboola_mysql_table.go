@@ -28,6 +28,11 @@ func resourceKeboolaMySqlWriterTable() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
+			"auto_run": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
 			"table": {
 				Type:     schema.TypeSet,
 				Optional: true,
@@ -259,10 +264,10 @@ func resourceKeboolaMySQLTablesRead(d *schema.ResourceData, meta interface{}) er
 		return extractError(err, getMySQLWriterResponse)
 	}
 
-	var sqlserverWriter MySqlWriter
+	var mysqlWriter MySqlWriter
 
 	decoder := json.NewDecoder(getMySQLWriterResponse.Body)
-	err = decoder.Decode(&sqlserverWriter)
+	err = decoder.Decode(&mysqlWriter)
 
 	if err != nil {
 		return err
@@ -272,11 +277,11 @@ func resourceKeboolaMySQLTablesRead(d *schema.ResourceData, meta interface{}) er
 
 	storageInputTableMap := make(map[string]MySqlWriterStorageTable)
 
-	for _, storageInputTable := range sqlserverWriter.Configuration.Storage.Input.Tables {
+	for _, storageInputTable := range mysqlWriter.Configuration.Storage.Input.Tables {
 		storageInputTableMap[storageInputTable.Source] = storageInputTable
 	}
 
-	for _, tableConfig := range sqlserverWriter.Configuration.Parameters.Tables {
+	for _, tableConfig := range mysqlWriter.Configuration.Parameters.Tables {
 		storageInputTable := storageInputTableMap[tableConfig.TableID]
 		tableDetails := map[string]interface{}{
 			"db_Name":     tableConfig.DatabaseName,
@@ -310,7 +315,14 @@ func resourceKeboolaMySQLTablesRead(d *schema.ResourceData, meta interface{}) er
 	}
 
 	d.Set("table", tables)
+	if d.Get("auto_run") == true {
+		mysqlConfigJSON, err := json.Marshal(mysqlWriter)
 
+		MySqlWriterRunResponse, err := client.PostToDockerRun("keboola.wr-db-mysql", d.Id(), mysqlConfigJSON)
+		if hasErrors(err, MySqlWriterRunResponse) {
+			return extractError(err, MySqlWriterRunResponse)
+		}
+	}
 	return nil
 }
 

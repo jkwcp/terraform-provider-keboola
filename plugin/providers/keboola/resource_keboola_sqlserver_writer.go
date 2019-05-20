@@ -3,7 +3,6 @@ package keboola
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/url"
 	"strconv"
@@ -191,7 +190,6 @@ func resourceKeboolaSQLServerWriterCreate(d *schema.ResourceData, meta interface
 	}
 	sqlserverDatabaseCredentials := d.Get("sqlserver_db_parameters").(map[string]interface{})
 
-	//	SQLServerSSH := d.Get("sqlserver_ssh_parameters").(map[string]interface{})
 	err = createSQLServerCredentialsConfiguration(sqlserverDatabaseCredentials, createSQLServerID, client)
 
 	if err != nil {
@@ -323,7 +321,7 @@ func mapSQLServerCredentialsToConfigurationDatabase(source map[string]interface{
 		databaseParameters.Username = val.(string)
 	}
 	if val, ok := source["hashed_password"]; ok {
-		databaseParameters.EncryptedPassword, err = SqlServerencyrptPassword(val.(string), client)
+		databaseParameters.EncryptedPassword, err = encyrptPassword("keboola.wr-db-mssql-v2", val.(string), client)
 	}
 	if val, ok := source["enabled"]; ok {
 		databaseParameters.SSH.Enabled, err = strconv.ParseBool(val.(string))
@@ -333,7 +331,7 @@ func mapSQLServerCredentialsToConfigurationDatabase(source map[string]interface{
 		databaseParameters.SSH.SSHHost = val.(string)
 		databaseParameters.Driver = "mssql"
 		databaseParameters.SSH.SSHKey, err = client.PostToDockerCreateSSH()
-		databaseParameters.SSH.SSHKey.PrivateKeyEncrypted, err = SqlServerencyrptPassword(databaseParameters.SSH.SSHKey.PrivateKeyEncrypted, client)
+		databaseParameters.SSH.SSHKey.PrivateKeyEncrypted, err = encyrptPassword("keboola.wr-db-mssql-v2", databaseParameters.SSH.SSHKey.PrivateKeyEncrypted, client)
 		databaseParameters.SSH.SSHKey.PrivateKey = ""
 	}
 	if val, ok := source["user"]; ok {
@@ -350,21 +348,6 @@ func mapSQLServerCredentialsToConfigurationDatabase(source map[string]interface{
 	////////////////////////filtering ///////////////////
 
 	return databaseParameters, err
-}
-
-func SqlServerencyrptPassword(value string, client *KBCClient) (str_body string, err error) {
-	body := []byte(value)
-	projectID, err := ProjectID(client)
-	fmt.Println(projectID)
-	createResponseConfig, err := client.PostToDockerEncrypt("keboola.wr-db-mssql-v2", body, projectID)
-	defer createResponseConfig.Body.Close()
-	resp_body, err := ioutil.ReadAll(createResponseConfig.Body)
-
-	if hasErrors(err, createResponseConfig) {
-		return "", err
-	}
-	str_body = string(resp_body)
-	return str_body, nil
 }
 
 //string(workspace.Owner.ID)

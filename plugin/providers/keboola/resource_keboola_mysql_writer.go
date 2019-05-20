@@ -3,7 +3,6 @@ package keboola
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/url"
 	"strconv"
@@ -65,6 +64,7 @@ type MySqlWriter struct {
 	Description   string                   `json:"description"`
 	Configuration MySqlWriterConfiguration `json:"configuration"`
 }
+
 type MySqlWriterConfiguration struct {
 	Parameters MySqlWriterParameters `json:"parameters"`
 	Storage    MySqlWriterStorage    `json:"storage,omitempty"`
@@ -122,15 +122,6 @@ func resourceKeboolaMySqlWriter() *schema.Resource {
 						},
 
 						////////////////////SSH////////////////////
-
-					},
-				},
-			},
-			"mysql_ssh_parameters": {
-				Type:     schema.TypeMap,
-				Optional: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
 						"enabled": {
 							Type:     schema.TypeBool,
 							Optional: true,
@@ -182,7 +173,7 @@ func resourceKeboolaMySqltWriterCreate(d *schema.ResourceData, meta interface{})
 		return err
 	}
 	mysqlDatabaseCredentials := d.Get("mysql_wr_parameters").(map[string]interface{})
-	mysqlSSHDatabaseCredentials := d.Get("mysql_ssh_parameters").(map[string]interface{})
+	mysqlSSHDatabaseCredentials := d.Get("mysql_wr_parameters").(map[string]interface{})
 	err = createMySqlcredentialsConfiguration(mysqlDatabaseCredentials, mysqlSSHDatabaseCredentials, createdMySqlID, client)
 
 	if err != nil {
@@ -190,12 +181,12 @@ func resourceKeboolaMySqltWriterCreate(d *schema.ResourceData, meta interface{})
 	}
 
 	d.SetPartial("mysql_wr_parameters")
-	d.SetPartial("mysql_ssh_parameters")
+
 	d.SetId(createdMySqlID)
 	d.Partial(false)
 	return resourceKeboolaMySqlWriterRead(d, meta)
 }
-func createMySqlcredentialsConfiguration(MySqlCredentials map[string]interface{}, sshCredentials map[string]interface{}, createdawsredshiftID string, client *KBCClient) error {
+func createMySqlcredentialsConfiguration(MySqlCredentials map[string]interface{}, sshCredentials map[string]interface{}, createdMySqlID string, client *KBCClient) error {
 	var err error
 
 	mySqlWriterConfiguration := MySqlWriterConfiguration{}
@@ -203,7 +194,6 @@ func createMySqlcredentialsConfiguration(MySqlCredentials map[string]interface{}
 	mySqlWriterConfiguration.Parameters.Database, err = mapMySqlDatabaseCredentialsToConfiguration(MySqlCredentials, client)
 	mySqlWriterConfiguration.Parameters.Database.SSH, err = mapMySqlSSHCredentialsToConfiguration(sshCredentials, client)
 	mySqlWriterConfigurationJSON, err := json.Marshal(mySqlWriterConfiguration)
-
 	if err != nil {
 		return err
 	}
@@ -214,7 +204,7 @@ func createMySqlcredentialsConfiguration(MySqlCredentials map[string]interface{}
 
 	updateConfigurationRequestBuffer := buffer.FromForm(updateConfigurationRequestForm)
 
-	updateConfigurationResponse, err := client.PutToStorage(fmt.Sprintf("storage/components/keboola.wr-db-mysql/configs/%s", createdawsredshiftID), updateConfigurationRequestBuffer)
+	updateConfigurationResponse, err := client.PutToStorage(fmt.Sprintf("storage/components/keboola.wr-db-mysql/configs/%s", createdMySqlID), updateConfigurationRequestBuffer)
 
 	if hasErrors(err, updateConfigurationResponse) {
 		return extractError(err, updateConfigurationResponse)
@@ -280,25 +270,12 @@ func mapMySqlDatabaseCredentialsToConfiguration(source map[string]interface{}, c
 		databaseParameters.Username = val.(string)
 	}
 	if val, ok := source["hashed_password"]; ok {
-		databaseParameters.EncryptedPassword, err = mySqlencyrptPassword(val.(string), client)
+		databaseParameters.EncryptedPassword, err = encyrptPassword("keboola.wr-db-mysql", val.(string), client)
 	}
 
 	return databaseParameters, err
 }
-func mySqlencyrptPassword(value string, client *KBCClient) (str_body string, err error) {
-	body := []byte(value)
-	projectID, err := ProjectID(client)
 
-	createResponseConfig, err := client.PostToDockerEncrypt("keboola.wr-db-mysql", body, projectID)
-	defer createResponseConfig.Body.Close()
-	resp_body, err := ioutil.ReadAll(createResponseConfig.Body)
-
-	if hasErrors(err, createResponseConfig) {
-		return "", err
-	}
-	str_body = string(resp_body)
-	return str_body, nil
-}
 func mapMySqlSSHCredentialsToConfiguration(source map[string]interface{}, client *KBCClient) (SSHTunnel, error) {
 
 	sshParameters := SSHTunnel{}
@@ -308,7 +285,7 @@ func mapMySqlSSHCredentialsToConfiguration(source map[string]interface{}, client
 
 		sshParameters.Enabled, err = strconv.ParseBool(val.(string))
 		sshParameters.SSHKey, err = client.PostToDockerCreateSSH()
-		sshParameters.SSHKey.PrivateKeyEncrypted, err = mySqlencyrptPassword(sshParameters.SSHKey.PrivateKeyEncrypted, client)
+		sshParameters.SSHKey.PrivateKeyEncrypted, err = encyrptPassword("keboola.wr-db-mysql", sshParameters.SSHKey.PrivateKeyEncrypted, client)
 		sshParameters.SSHKey.PrivateKey = ""
 	}
 	if val, ok := source["sshHost"]; ok {
@@ -369,7 +346,7 @@ func resourceKeboolaMySqlWriterRead(d *schema.ResourceData, meta interface{}) er
 		sshParameters["sshPort"] = sshCredentials.SSHPort
 
 		d.Set("mysql_wr_parameters", dbParameters)
-		d.Set("mysql_ssh_parameters", sshParameters)
+		d.Set("mysql_wr_parameters", sshParameters)
 	}
 
 	return nil
@@ -394,7 +371,7 @@ func resourceKeboolaMySqlWriterUpdate(d *schema.ResourceData, meta interface{}) 
 		return err
 	}
 	mysqlCredentials := d.Get("mysql_wr_parameters").(map[string]interface{})
-	mysshCredentials := d.Get("mysql_ssh_parameters").(map[string]interface{})
+	mysshCredentials := d.Get("mysql_wr_parameters").(map[string]interface{})
 	mysqlwriter.Configuration.Parameters.Database, err = mapMySqlDatabaseCredentialsToConfiguration(mysqlCredentials, client)
 	mysqlwriter.Configuration.Parameters.Database.SSH, err = mapMySqlSSHCredentialsToConfiguration(mysshCredentials, client)
 	mysqlwriterConfigJSON, err := json.Marshal(mysqlwriter.Configuration)
