@@ -1,10 +1,9 @@
 package keboola
-
+//4900
 // this isn't complete can't update. Can Create Tables and delete
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/url"
 
@@ -155,27 +154,6 @@ func mapAWSs3CredentialsToRowConfiguration(source map[string]interface{}, client
 	return Parameters, err
 }
 
-type Rows []struct {
-	ID string `json:"id"`
-}
-
-/*
-func RowID(client *KBCClient, configID string) (string, error) {
-
-	resp, err := client.GetFromRowStorage(fmt.Sprintf("storage/components/keboola.wr-aws-s3/configs/%s/rows/", configID))
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	projectBody, _ := ioutil.ReadAll(resp.Body)
-	rows := Row{}
-	id := rows.rowinfo.id
-	json.Unmarshal(projectBody, &id)
-
-	return id, nil
-}
-*/
 func resourceKeboolaAWSS3BucketTablesRead(d *schema.ResourceData, meta interface{}) error {
 
 	log.Println("[INFO] Reading AWS S3 Bucket Writer Tables from Keboola.")
@@ -248,59 +226,20 @@ func resourceKeboolaAWSS3BucketTablesRead(d *schema.ResourceData, meta interface
 func resourceKeboolaAWSS3BucketTablesUpdate(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Updating AWS S3 Writer Tables in Keboola.")
 
-	tableID := d.Get("table_id").(string)
-
-	storageTables := configurationOfStorageTable(tableID)
-
-	client := meta.(*KBCClient)
-
-	var awss3Writer AWSs3Writer
-	getWriterResponseRowStorage, err := client.GetFromStorage(fmt.Sprintf("storage/components/keboola.wr-aws-s3/configs/%s/rows", d.Id()))
-
-	if hasErrors(err, getWriterResponseRowStorage) {
-		return extractError(err, getWriterResponseRowStorage)
-	}
-	decoderRowStorage := json.NewDecoder(getWriterResponseRowStorage.Body)
-	err = decoderRowStorage.Decode(&awss3Writer)
-
-	awss3Row := d.Get("s3_row_parameters").(map[string]interface{})
-	awss3Writer.ConfigurationRow.RowsInfo.Parameters, err = mapAWSs3CredentialsToRowConfiguration(awss3Row, client)
-
-	if err != nil {
-		return err
-	}
-
-	awss3Writer.ConfigurationRow.RowsInfo.Storage.Input.Tables = storageTables
-
-	getWriterResponseRow, err := client.GetFromStorage(fmt.Sprintf("storage/components/keboola.wr-aws-s3/configs/%s/rows", d.Id()))
-	if err != nil {
-		return err
-	}
-	defer getWriterResponseRow.Body.Close()
-	projectRowBody, _ := ioutil.ReadAll(getWriterResponseRow.Body)
-
-	row := make([]RowInfo, 0)
-
-	json.Unmarshal(projectRowBody, &row)
-	if err != nil {
-		return err
-	}
-	id := row[0].Row[0].ID
-	updateCredentialsForm := url.Values{}
-	awss3WriterConfigJSON, err := json.Marshal(awss3Writer.ConfigurationRow.RowsInfo)
-
-	updateCredentialsForm.Add("configuration", string(awss3WriterConfigJSON))
-	updateCredentialsForm.Add("changeDescription", "Updated S3 Bucket Writer configuration via Terraform")
-	updateRowCredentialsBuffer := buffer.FromForm(updateCredentialsForm)
-	updateCredentialsResponse, err := client.PutToStorage(fmt.Sprintf("storage/components/keboola.wr-aws-s3/configs/%s/rows/%v", d.Id(), id), updateRowCredentialsBuffer)
-	if hasErrors(err, updateCredentialsResponse) {
-		return extractError(err, updateCredentialsResponse)
-	}
-	return resourceKeboolaAWSS3BucketTablesRead(d, meta)
+	return nil
 
 }
 
 func resourceKeboolaAWSS3BucketTablesDelete(d *schema.ResourceData, meta interface{}) error {
-	log.Println("[INFO] Creating AWS S3 Writer Tables in Keboola.")
+	log.Println("[INFO] Deleting AWS S3 Writer Tables in Keboola.")
+
+	client := meta.(*KBCClient)
+	destroyResponse, err := client.DeleteFromStorage(fmt.Sprintf("storage/components/keboola.wr-aws-s3/configs/%s", d.Id()))
+
+	if hasErrors(err, destroyResponse) {
+		return extractError(err, destroyResponse)
+	}
+
+	d.SetId("")
 	return nil
 }
