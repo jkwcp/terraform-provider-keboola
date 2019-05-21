@@ -1,6 +1,5 @@
 package keboola
 
-//this isn't complete
 import (
 	"bytes"
 	"encoding/json"
@@ -26,7 +25,6 @@ type TableauTable struct {
 
 //Specifies the Create, Read, Update, and Delete functions for the Tableau Writer table
 //Called from main.tf
-//Currently incomplete, attempting to reconfigure based on the aws_redshift_writer_table.go file
 func resourceKeboolaTableauWriterTables() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceKeboolaTableauWriterTableCreate,
