@@ -2,6 +2,7 @@ package keboola
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/url"
 
@@ -101,17 +102,104 @@ func resourceKeboolaAWSS3ExtractorCreate(d *schema.ResourceData, meta interface{
 
 	d.SetId(string(createResult.ID))
 
-	return nil
+	return resourceKeboolaAWSS3ExtractorRead(d, meta)
 }
 
 func resourceKeboolaAWSS3ExtractorRead(d *schema.ResourceData, meta interface{}) error {
+	log.Println("[INFO] Reading AWS S3 Extractor from Keboola.")
+
+	client := meta.(*KBCClient)
+	getAWSS3BucketExtractorResponse, err := client.GetFromStorage(fmt.Sprintf("storage/components/keboola.ex-aws-s3/configs/%s", d.Id()))
+
+	if d.Id() == "" {
+		return nil
+	}
+
+	if hasErrors(err, getAWSS3BucketExtractorResponse) {
+		if getAWSS3BucketExtractorResponse.StatusCode == 404 {
+			d.SetId("")
+			return nil
+		}
+
+		return extractError(err, getAWSS3BucketExtractorResponse)
+	}
+
+	var aWSS3Extractor AWSS3Extractor
+
+	decoder := json.NewDecoder(getAWSS3BucketExtractorResponse.Body)
+	err = decoder.Decode(&aWSS3Extractor)
+
+	d.Set("id", aWSS3Extractor.ID)
+	d.Set("name", aWSS3Extractor.Name)
+	d.Set("description", aWSS3Extractor.Description)
+	d.Set("access_key_id", aWSS3Extractor.Configuration.Parameters.AccessKeyId)
+	d.Set("access_key", aWSS3Extractor.Configuration.Parameters.EncryptedAccessKeySecret)
+
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 func resourceKeboolaAWSS3ExtractorUpdate(d *schema.ResourceData, meta interface{}) error {
-	return nil
+	log.Println("[INFO] Updating AWS S3 Extractor in Keboola.")
+
+	client := meta.(*KBCClient)
+
+	getExtractorResponse, err := client.GetFromStorage(fmt.Sprintf("storage/components/keboola.ex-aws-s3/configs/%s", d.Id()))
+
+	if hasErrors(err, getExtractorResponse) {
+		return extractError(err, getExtractorResponse)
+	}
+
+	var aWSS3Extractor AWSS3Extractor
+
+	decoder := json.NewDecoder(getExtractorResponse.Body)
+	err = decoder.Decode(&aWSS3Extractor)
+
+	if err != nil {
+		return err
+	}
+
+	s3BucketExtractorConfiguration := S3BucketExtractorConfiguration{
+		Parameters: S3BucketExtractorConfigurationParameters{
+			AccessKeyId:              d.Get("access_key_id").(string),
+			EncryptedAccessKeySecret: d.Get("access_key").(string),
+		},
+	}
+
+	s3BucketExtractorConfigJSON, err := json.Marshal(s3BucketExtractorConfiguration)
+
+	if err != nil {
+		return err
+	}
+
+	updateS3BucketForm := url.Values{}
+	updateS3BucketForm.Add("name", d.Get("name").(string))
+	updateS3BucketForm.Add("description", d.Get("description").(string))
+	updateS3BucketForm.Add("configuration", string(s3BucketExtractorConfigJSON))
+
+	updateS3BucketFormBuffer := buffer.FromForm(updateS3BucketForm)
+	updateS3BucketResponse, err := client.PutToStorage(fmt.Sprintf("storage/components/keboola.ex-aws-s3/configs/%s", d.Id()), updateS3BucketFormBuffer)
+
+	if hasErrors(err, updateS3BucketResponse) {
+		return extractError(err, updateS3BucketResponse)
+	}
+
+	return resourceKeboolaAWSS3ExtractorRead(d, meta)
 }
 
 func resourceKeboolaAWSS3ExtractorDelete(d *schema.ResourceData, meta interface{}) error {
+	log.Printf("[INFO] Deleting AWS S3 Extractor in Keboola: %s", d.Id())
+
+	client := meta.(*KBCClient)
+	destroyResponse, err := client.DeleteFromStorage(fmt.Sprintf("storage/components/keboola.ex-aws-s3/configs/%s", d.Id()))
+
+	if hasErrors(err, destroyResponse) {
+		return extractError(err, destroyResponse)
+	}
+
+	d.SetId("")
+
 	return nil
 }

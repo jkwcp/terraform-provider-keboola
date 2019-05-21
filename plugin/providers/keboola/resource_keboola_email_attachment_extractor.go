@@ -226,6 +226,12 @@ func resourceKeboolaEmailAttachmentExtractorRead(d *schema.ResourceData, meta in
 	d.Set("enclosure", emailAttachmentExtractor.Configuration.Parameters.Enclosure)
 	d.Set("incremental", emailAttachmentExtractor.Configuration.Parameters.Incremental)
 
+	runExtractorResponse, err := client.PostToDockerRun("keboola.ex-email-attachments", d.Id())
+
+	if hasErrors(err, runExtractorResponse) {
+		return extractError(err, runExtractorResponse)
+	}
+
 	return nil
 }
 func resourceKeboolaEmailAttachmentExtractorUpdate(d *schema.ResourceData, meta interface{}) error {

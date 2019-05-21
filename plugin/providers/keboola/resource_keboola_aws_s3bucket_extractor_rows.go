@@ -18,7 +18,7 @@ type S3BucketExtractorRowsConfigParameter struct {
 }
 
 type S3BucketExtractorRowsConfig struct {
-	Parameters S3BucketExtractorRowsConfigParameter `json:"parameters"`
+	Parameters S3BucketExtractorRowsConfigParameter `json:"parameters, omitempty"`
 }
 
 type S3BucketExtractorRows struct {
@@ -62,7 +62,8 @@ func resourceKeboolaAWSS3ExtractorRows() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Default:  false,
-			}, "new_files_only": {
+			},
+			"new_files_only": {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Default:  false,
@@ -117,14 +118,14 @@ func resourceKeboolaAWSS3ExtractorRowsCreate(d *schema.ResourceData, meta interf
 
 	d.SetId(string(createResult.ID))
 
-	return nil
+	return resourceKeboolaAWSS3ExtractorRowsRead(d, meta)
 }
 
 func resourceKeboolaAWSS3ExtractorRowsRead(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Reading S3 Bucket Extractor Rows in Keboola")
 	client := meta.(*KBCClient)
 
-	getResponse, err := client.GetFromStorage(fmt.Sprintf("storage/components/transformation/configs/%s/rows", d.Get("extractor_id")))
+	getResponse, err := client.GetFromStorage(fmt.Sprintf("storage/components/keboola.ex-aws-s3/configs/%s/rows/", d.Get("extractor_id")))
 
 	if hasErrors(err, getResponse) {
 		if getResponse.StatusCode == 404 {
@@ -161,10 +162,70 @@ func resourceKeboolaAWSS3ExtractorRowsRead(d *schema.ResourceData, meta interfac
 
 func resourceKeboolaAWSS3ExtractorRowsUpdate(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Updating S3 Bucket Extractor Rows in Keboola.")
-	return nil
+
+	client := meta.(*KBCClient)
+
+	getExtractorResponse, err := client.GetFromStorage(fmt.Sprintf("storage/components/keboola.ex-aws-s3/configs/%s/rows/%s", d.Get("extractor_id"), d.Id()))
+
+	if hasErrors(err, getExtractorResponse) {
+		return extractError(err, getExtractorResponse)
+	}
+
+	var s3BucketExtractorRows S3BucketExtractorRows
+
+	decoder := json.NewDecoder(getExtractorResponse.Body)
+	err = decoder.Decode(&s3BucketExtractorRows)
+
+	if err != nil {
+		return err
+	}
+
+	extractorID := d.Get("extractor_id").(string)
+
+	s3BucketExtractorRowsConfig := S3BucketExtractorRowsConfig{
+		Parameters: S3BucketExtractorRowsConfigParameter{
+			Bucket:            d.Get("bucket").(string),
+			Key:               d.Get("key").(string),
+			IncludeSubFolders: d.Get("include_subfolders").(bool),
+			NewFilesOnly:      d.Get("new_files_only").(bool),
+		},
+	}
+
+	s3BucketExtractorRowsConfigJSON, err := json.Marshal(s3BucketExtractorRowsConfig)
+
+	if err != nil {
+		return err
+	}
+
+	updateS3BucketRowForm := url.Values{}
+	updateS3BucketRowForm.Add("name", d.Get("name").(string))
+	updateS3BucketRowForm.Add("description", d.Get("description").(string))
+	updateS3BucketRowForm.Add("configuration", string(s3BucketExtractorRowsConfigJSON))
+
+	updateS3BucketRowsBuffer := buffer.FromForm(updateS3BucketRowForm)
+
+	createResponse, err := client.PutToStorage(fmt.Sprintf("storage/components/keboola.ex-aws-s3/configs/%s/rows/%s", extractorID, d.Id()), updateS3BucketRowsBuffer)
+
+	if hasErrors(err, createResponse) {
+		return extractError(err, createResponse)
+	}
+
+	return resourceKeboolaAWSS3ExtractorRowsRead(d, meta)
 }
 
 func resourceKeboolaAWSS3ExtractorRowsDelete(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Deleting S3 Bucket Extractor Rows in Keboola.")
+
+	extractorID := d.Get("extractor_id").(string)
+
+	client := meta.(*KBCClient)
+	destroyResponse, err := client.DeleteFromStorage(fmt.Sprintf("storage/components/keboola.ex-aws-s3/configs/%s/rows/%s", extractorID, d.Id()))
+
+	if hasErrors(err, destroyResponse) {
+		return extractError(err, destroyResponse)
+	}
+
+	d.SetId("")
+
 	return nil
 }
