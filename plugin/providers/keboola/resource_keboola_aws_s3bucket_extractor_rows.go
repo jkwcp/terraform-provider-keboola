@@ -10,24 +10,9 @@ import (
 	"github.com/plmwong/terraform-provider-keboola/plugin/providers/keboola/buffer"
 )
 
-type S3BucketExtractorRowsConfigParameter struct {
-	Bucket            string `json:"bucket"`
-	Key               string `json:"key"`
-	IncludeSubFolders bool   `json: "includeSubfolders"`
-	NewFilesOnly      bool   `json: "newFilesOnly"`
-}
-
-type S3BucketExtractorRowsConfig struct {
-	Parameters S3BucketExtractorRowsConfigParameter `json:"parameters, omitempty"`
-}
-
-type S3BucketExtractorRows struct {
-	ID            string                      `json:"id"`
-	Name          string                      `json:"name"`
-	Description   string                      `json:"description"`
-	Configuration S3BucketExtractorRowsConfig `json:"configuration"`
-}
-
+// Delete function to the resource AWS S3 Bucket Extractor Rows.
+// It gets called when the keboola Provider calls it.
+// Completed
 func resourceKeboolaAWSS3ExtractorRows() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceKeboolaAWSS3ExtractorRowsCreate,
@@ -73,6 +58,9 @@ func resourceKeboolaAWSS3ExtractorRows() *schema.Resource {
 
 }
 
+// Create function to the resource AWS S3 Bucket Extractor Rows.
+// It gets called when the keboola Provider calls it.
+// Completed
 func resourceKeboolaAWSS3ExtractorRowsCreate(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Creating S3 Bucket Extractor Rows in Keboola")
 
@@ -121,6 +109,9 @@ func resourceKeboolaAWSS3ExtractorRowsCreate(d *schema.ResourceData, meta interf
 	return resourceKeboolaAWSS3ExtractorRowsRead(d, meta)
 }
 
+// Read function to the resource AWS S3 Bucket Extractor Rows.
+// It gets called when the keboola Provider calls it.
+// Completed
 func resourceKeboolaAWSS3ExtractorRowsRead(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Reading S3 Bucket Extractor Rows in Keboola")
 	client := meta.(*KBCClient)
@@ -160,6 +151,9 @@ func resourceKeboolaAWSS3ExtractorRowsRead(d *schema.ResourceData, meta interfac
 	return nil
 }
 
+// Update function to the resource AWS S3 Bucket Extractor Rows.
+// It gets called when the keboola Provider calls it.
+// Completed
 func resourceKeboolaAWSS3ExtractorRowsUpdate(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Updating S3 Bucket Extractor Rows in Keboola.")
 
@@ -213,6 +207,9 @@ func resourceKeboolaAWSS3ExtractorRowsUpdate(d *schema.ResourceData, meta interf
 	return resourceKeboolaAWSS3ExtractorRowsRead(d, meta)
 }
 
+// Delete function to the resource AWS S3 Bucket Extractor Rows.
+// It gets called when the keboola Provider calls it.
+// Completed
 func resourceKeboolaAWSS3ExtractorRowsDelete(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Deleting S3 Bucket Extractor Rows in Keboola.")
 

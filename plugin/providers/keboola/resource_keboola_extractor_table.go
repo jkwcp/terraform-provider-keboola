@@ -1,5 +1,6 @@
 package keboola
 
+//This is complete
 import (
 	"encoding/json"
 	"fmt"
@@ -12,6 +13,9 @@ import (
 
 //region Keboola API Contracts
 
+// Main function to the resource Snowflake Extractor Table.
+// It gets called when the keboola Provider calls it.
+// Completed
 func resourceKeboolaExtractorTable() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceKeboolaExtractorTableCreate,
@@ -80,6 +84,9 @@ func resourceKeboolaExtractorTable() *schema.Resource {
 	}
 }
 
+// Create function to the resource Snowflake Extractor Table.
+// It gets called when the terraform applies a new Snowflake Extractor Table configuration.
+// Completed
 func resourceKeboolaExtractorTableCreate(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Creating Extractor tables in Keboola.")
 
@@ -158,6 +165,9 @@ func resourceKeboolaExtractorTableCreate(d *schema.ResourceData, meta interface{
 	return resourceKeboolaExtractorTableRead(d, meta)
 }
 
+// Read function to the resource Snowflake Extractor Table.
+// It gets called whenever there is an existing Snowflake Extractor Table configuration
+// Completed
 func resourceKeboolaExtractorTableRead(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Reading Snowflake Extractor Tables from Keboola.")
 
@@ -208,6 +218,9 @@ func resourceKeboolaExtractorTableRead(d *schema.ResourceData, meta interface{})
 	return nil
 }
 
+// Update function to the resource Snowflake Extractor Table.
+// It gets called when the keboola Provider calls it.
+// Completed
 func resourceKeboolaExtractorTableUpdate(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Updating Snowflake Extractor Tables in Keboola.")
 
@@ -282,6 +295,9 @@ func resourceKeboolaExtractorTableUpdate(d *schema.ResourceData, meta interface{
 	return resourceKeboolaExtractorTableRead(d, meta)
 }
 
+// Delete function to the resource Snowflake Extractor Table.
+// It gets called when the configuration is removed from terraform.
+// Completed
 func resourceKeboolaExtractorTableDelete(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[INFO] Clearing Snowflake Extractor Tables in Keboola: %s", d.Id())
 

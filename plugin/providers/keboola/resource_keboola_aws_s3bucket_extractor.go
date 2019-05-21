@@ -10,6 +10,8 @@ import (
 	"github.com/plmwong/terraform-provider-keboola/plugin/providers/keboola/buffer"
 )
 
+//Not complete, missing processors
+
 //region Keboola API Contracts
 
 type S3BucketExtractorConfigurationParameters struct {
@@ -30,6 +32,27 @@ type AWSS3Extractor struct {
 	//Rows
 }
 
+type S3BucketExtractorRowsConfigParameter struct {
+	Bucket            string `json:"bucket"`
+	Key               string `json:"key"`
+	IncludeSubFolders bool   `json: "includeSubfolders"`
+	NewFilesOnly      bool   `json: "newFilesOnly"`
+}
+
+type S3BucketExtractorRowsConfig struct {
+	Parameters S3BucketExtractorRowsConfigParameter `json:"parameters, omitempty"`
+}
+
+type S3BucketExtractorRows struct {
+	ID            string                      `json:"id"`
+	Name          string                      `json:"name"`
+	Description   string                      `json:"description"`
+	Configuration S3BucketExtractorRowsConfig `json:"configuration"`
+}
+
+// Main function to the resource AWS S3 Bucket Extractor.
+// It gets called when the keboola Provider calls it.
+// Completed
 func resourceKeboolaAWSS3Extractor() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceKeboolaAWSS3ExtractorCreate,
@@ -61,6 +84,9 @@ func resourceKeboolaAWSS3Extractor() *schema.Resource {
 	}
 }
 
+// Create function to the resource AWS S3 Bucket Extractor.
+// It gets called when the keboola Provider calls it.
+// Completed
 func resourceKeboolaAWSS3ExtractorCreate(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Creating S3Extractor Bucket in Keboola")
 
@@ -105,6 +131,9 @@ func resourceKeboolaAWSS3ExtractorCreate(d *schema.ResourceData, meta interface{
 	return resourceKeboolaAWSS3ExtractorRead(d, meta)
 }
 
+// Read function to the resource AWS S3 Bucket Extractor.
+// It gets called when the keboola Provider calls it.
+// Completed
 func resourceKeboolaAWSS3ExtractorRead(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Reading AWS S3 Extractor from Keboola.")
 
@@ -141,6 +170,9 @@ func resourceKeboolaAWSS3ExtractorRead(d *schema.ResourceData, meta interface{})
 	return nil
 }
 
+// Update function to the resource AWS S3 Bucket Extractor.
+// It gets called when the keboola Provider calls it.
+// Completed
 func resourceKeboolaAWSS3ExtractorUpdate(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Updating AWS S3 Extractor in Keboola.")
 
@@ -189,6 +221,9 @@ func resourceKeboolaAWSS3ExtractorUpdate(d *schema.ResourceData, meta interface{
 	return resourceKeboolaAWSS3ExtractorRead(d, meta)
 }
 
+// Delete function to the resource AWS S3 Bucket Extractor.
+// It gets called when the keboola Provider calls it.
+// Completed
 func resourceKeboolaAWSS3ExtractorDelete(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[INFO] Deleting AWS S3 Extractor in Keboola: %s", d.Id())
 

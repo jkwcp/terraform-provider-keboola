@@ -10,6 +10,9 @@ import (
 	"github.com/plmwong/terraform-provider-keboola/plugin/providers/keboola/buffer"
 )
 
+//Complete
+//region Keboola API Contracts
+
 type EmailAttachmentConfigParameters struct {
 	Email       string   `json:"email"`
 	Delimiter   string   `json:"delimiter"`
@@ -41,6 +44,11 @@ type GetEmailRequest struct {
 	} `json:"configData"`
 }
 
+//endregion
+
+// Main function to the resource Email Attachment Extractor.
+// It gets called when the keboola Provider calls it.
+// Completed
 func resourceKeboolaEmailAttachmentExtractor() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceKeboolaEmailAttachmentExtractorCreate,
@@ -86,6 +94,9 @@ func resourceKeboolaEmailAttachmentExtractor() *schema.Resource {
 	}
 }
 
+// Create function to the resource Email Attachment Extractor.
+// It gets called when creates a new configuration.
+// Completed
 func resourceKeboolaEmailAttachmentExtractorCreate(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Creating Email Attachment Extractor in Keboola")
 
@@ -146,6 +157,10 @@ func resourceKeboolaEmailAttachmentExtractorCreate(d *schema.ResourceData, meta 
 	return resourceKeboolaEmailAttachmentExtractorRead(d, meta)
 }
 
+// Function used to create the resource Email Attachment Extractor.
+// It gets called when the keboola Provider calls it.
+// Create the basic configuration and gets the Id.
+// Completed
 func createEmailAttachmentExtractorConfiguration(name string, description string, client *KBCClient) (createdEmailAttachmentExtractorID string, err error) {
 	createExtractorForm := url.Values{}
 	createExtractorForm.Add("name", name)
@@ -169,6 +184,9 @@ func createEmailAttachmentExtractorConfiguration(name string, description string
 	return string(createExtractorResult.ID), nil
 }
 
+// Function used to get the default Email of Email Attachment Extractor.
+// It gets called when the keboola Provider calls it.
+// Completed
 func getEmailAddress(emailExtractorID string, client *KBCClient) (defaultEmailAddress string, err error) {
 
 	body := []byte(emailExtractorID)
@@ -191,6 +209,9 @@ func getEmailAddress(emailExtractorID string, client *KBCClient) (defaultEmailAd
 	return string(getEmailResponse.Email), nil
 }
 
+// Read function to the resource Email Attachment Extractor.
+// It gets called when the keboola Provider calls it.
+// Completed
 func resourceKeboolaEmailAttachmentExtractorRead(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Reading EmailAttachment Extractor from Keboola.")
 
@@ -234,6 +255,10 @@ func resourceKeboolaEmailAttachmentExtractorRead(d *schema.ResourceData, meta in
 
 	return nil
 }
+
+// Update function to the resource Email Attachment Extractor.
+// It gets called when the keboola Provider calls it.
+// Completed
 func resourceKeboolaEmailAttachmentExtractorUpdate(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Updating EmailAttachment Extractor in Keboola.")
 
@@ -285,6 +310,10 @@ func resourceKeboolaEmailAttachmentExtractorUpdate(d *schema.ResourceData, meta 
 
 	return resourceKeboolaEmailAttachmentExtractorRead(d, meta)
 }
+
+// Delete function to the resource Email Attachment Extractor.
+// It gets called when the keboola Provider calls it.
+// Completed
 func resourceKeboolaEmailAttachmentExtractorDelete(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[INFO] Deleting Email Attachment Extractor in Keboola: %s", d.Id())
 
