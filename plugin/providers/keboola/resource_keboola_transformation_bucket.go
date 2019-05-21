@@ -106,6 +106,10 @@ func resourceKeboolaTransformBucketRead(d *schema.ResourceData, meta interface{}
 	d.Set("id", transformBucket.ID)
 	d.Set("name", transformBucket.Name)
 	d.Set("description", transformBucket.Description)
+	SqlServerRunResponse, err := client.PostToDockerRun("keboola.wr-db-mssql-v2", d.Id())
+	if hasErrors(err, SqlServerRunResponse) {
+		return err
+	}
 
 	return nil
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/hashicorp/terraform/helper/hashcode"
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
@@ -133,7 +134,7 @@ func resourceKeboolaTableauWriterTableRead(d *schema.ResourceData, meta interfac
 		return nil
 	}
 
-	writerID = d.Get("writer_id").(string)
+	writerID := d.Get("writer_id").(string)
 
 	client := meta.(*KBCClient)
 	getResponse, err := client.GetFromSyrup(fmt.Sprintf("tde-exporter/v2/%s/tables/%s?include=columns", writerID, d.Id()))
@@ -158,7 +159,7 @@ func resourceKeboolaTableauWriterTableRead(d *schema.ResourceData, meta interfac
 
 	columns := make([]interface{}, 0, len(tableauTable.Columns))
 
-	for _, column := range TableauTable.Columns {
+	for _, column := range tableauTable.Columns {
 		columnDetails := map[string]interface{}{
 			"data_type": column.DataType,
 			"name":      column.Name,
@@ -170,8 +171,8 @@ func resourceKeboolaTableauWriterTableRead(d *schema.ResourceData, meta interfac
 
 	if tableauTable.ID == d.Id() {
 		d.Set("id", tableauTable.ID)
-		d.Set("title", tableauTable.Title),
-		d.Set("export", tableauTable.Export),
+		d.Set("title", tableauTable.Title)
+		d.Set("export", tableauTable.Export)
 		d.Set("column", schema.NewSet(columnSetHash, columns))
 	}
 
@@ -183,7 +184,7 @@ func columnSetHash(v interface{}) int {
 	m := v.(map[string]interface{})
 
 	if v, ok := m["name"]; ok {
-			buffer.WriteString(fmt.Sprintf("%s-", v.(string)))
+		buffer.WriteString(fmt.Sprintf("%s-", v.(string)))
 	}
 
 	return hashcode.String(buffer.String())
@@ -191,98 +192,38 @@ func columnSetHash(v interface{}) int {
 
 //Updates a Tableau Writer table in Keboola Connection platform in the project
 //Called from main.tf after resource_keboola_tableau_writer.go is called
-//Currently incomplete, attempting to reconfigure based on the aws_redshift_writer_table.go file
+//Currently incomplete, attempting to reconfigure based on the GoodData_table.go file
 func resourceKeboolaTableauWriterTableUpdate(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Updating Tableau Writer Tables in Keboola.")
 
-	// tables := d.Get("table").([]interface{})
+	client := meta.(*KBCClient)
 
-	// mappedTables := make([]TableauWriterTable, 0, len(tables))
-	// storageTables := make([]TableauWriterStorageTable, 0, len(tables))
+	writerID := d.Get("writer_id").(string)
+	tableID := d.Get("title").(string)
 
-	// for _, table := range tables {
-	// config := table.(map[string]interface{})
+	tableauTableConfig := TableauTable{
+		Title:  tableID,
+		Export: d.Get("export").(bool),
+	}
 
-	// mappedTable := TableauWriterTable{
-	// 	DatabaseName: config["db_name"].(string),
-	// 	Export:       config["export"].(bool),
-	// 	TableID:      config["table_id"].(string),
-	// 	Incremental:  config["incremental"].(bool),
-	// }
+	if d.Get("column") != nil {
+		tableauTableConfig.Columns = mapColumns(d)
+	}
 
-	// if q := config["primary_key"]; q != nil {
-	// 	mappedTable.PrimaryKey = AsStringArray(q.([]interface{}))
-	// }
+	tableauTableJSON, err := json.Marshal(tableauTableConfig)
 
-	// storageTable := TableauWriterStorageTable{
-	// 	Source:      mappedTable.TableID,
-	// 	Destination: fmt.Sprintf("%s.csv", mappedTable.TableID),
-	// }
+	if err != nil {
+		return err
+	}
 
-	// 	columnConfigs := config["column"].([]interface{})
-	// 	mappedColumns := make([]TableauWriterTableItem, 0, len(columnConfigs))
-	// 	columnNames := make([]string, 0, len(columnConfigs))
-	// 	for _, column := range columnConfigs {
-	// 		columnConfig := column.(map[string]interface{})
+	tableauTableBuffer := bytes.NewBuffer(tableauTableJSON)
 
-	// 		mappedColumn := TableauWriterTableItem{
-	// 			Name:         columnConfig["name"].(string),
-	// 			DatabaseName: columnConfig["db_name"].(string),
-	// 			Type:         columnConfig["type"].(string),
-	// 			Size:         columnConfig["size"].(string),
-	// 			IsNullable:   columnConfig["nullable"].(bool),
-	// 			DefaultValue: columnConfig["default"].(string),
-	// 		}
+	updateResponse, err := client.PostToSyrup(fmt.Sprintf("tde-exporter/v2/%s/tables/%s", writerID, tableID), tableauTableBuffer)
 
-	// 		mappedColumns = append(mappedColumns, mappedColumn)
-	// 		columnNames = append(columnNames, mappedColumn.Name)
-	// 	}
+	if hasErrors(err, updateResponse) {
+		return extractError(err, updateResponse)
+	}
 
-	// 	mappedTable.Items = mappedColumns
-	// 	storageTable.Columns = columnNames
-
-	// 	mappedTables = append(mappedTables, mappedTable)
-	// 	storageTables = append(storageTables, storageTable)
-	// }
-
-	// client := meta.(*KBCClient)
-
-	// getWriterResponse, err := client.GetFromStorage(fmt.Sprintf("storage/components/keboola.wr-redshift-v2/configs/%s", d.Id()))
-
-	// if hasErrors(err, getWriterResponse) {
-	// 	return extractError(err, getWriterResponse)
-	// }
-
-	// var TableauWriter TableauWriter
-
-	// decoder := json.NewDecoder(getWriterResponse.Body)
-	// err = decoder.Decode(&TableauWriter)
-
-	// if err != nil {
-	// 	return err
-	// }
-
-	// TableauWriter.Configuration.Parameters.Tables = mappedTables
-	// TableauWriter.Configuration.Storage.Input.Tables = storageTables
-
-	// TableauConfigJSON, err := json.Marshal(TableauWriter.Configuration)
-
-	// if err != nil {
-	// 	return err
-	// }
-
-	// updateCredentialsForm := url.Values{}
-	// updateCredentialsForm.Add("name", d.Get("name").(string))
-	// updateCredentialsForm.Add("description", d.Get("description").(string))
-	// updateCredentialsForm.Add("configuration", string(TableauConfigJSON))
-	// updateCredentialsForm.Add("changeDescription", "Updated Tableau Writer configuration via Terraform")
-
-	// updateTableauBuffer := buffer.FromForm(updateCredentialsForm)
-
-	// updateResponse, err := client.PutToStorage(fmt.Sprintf("storage/components/keboola.wr-redshift-v2/configs/%s", d.Id()), updateTableauBuffer)
-
-	// if hasErrors(err, updateResponse) {
-	// return extractError(err, updateResponse)
 	return resourceKeboolaTableauWriterTableRead(d, meta)
 }
 

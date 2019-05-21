@@ -1,9 +1,9 @@
 package keboola
-
+//4900
+//Completed
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/url"
 	"strconv"
@@ -36,13 +36,12 @@ type MySqlWriterTableItem struct {
 	DefaultValue string `json:"default"`
 }
 type MySqlWriterTable struct {
-	DatabaseName string   `json:"dbName"`
-	Export       bool     `json:"export"`
-	Incremental  bool     `json:"incremental"`
-	TableID      string   `json:"tableId"`
-	PrimaryKey   []string `json:"primaryKey,omitempty"`
-	//LoadType     string                 `json:"loadtype,omitempty"`
-	Items []MySqlWriterTableItem `json:"items"`
+	DatabaseName string                 `json:"dbName"`
+	Export       bool                   `json:"export"`
+	Incremental  bool                   `json:"incremental"`
+	TableID      string                 `json:"tableId"`
+	PrimaryKey   []string               `json:"primaryKey,omitempty"`
+	Items        []MySqlWriterTableItem `json:"items"`
 }
 type MySqlWriterStorageTable struct {
 	Source        string   `json:"source"`
@@ -65,11 +64,19 @@ type MySqlWriter struct {
 	Description   string                   `json:"description"`
 	Configuration MySqlWriterConfiguration `json:"configuration"`
 }
+
 type MySqlWriterConfiguration struct {
 	Parameters MySqlWriterParameters `json:"parameters"`
 	Storage    MySqlWriterStorage    `json:"storage,omitempty"`
 }
 
+//What does it do:
+// It  is the main function to the resource MySqlWriter. It sees if the AWS Redshift writer needs to Update create read and delete.
+// ALso it gives a map to what of what varibles are required or optional for keboola platform.
+//when does it get called:
+// It gets called when the provider calls it.
+//Completed:
+// Yes
 func resourceKeboolaMySqlWriter() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceKeboolaMySqltWriterCreate,
@@ -122,15 +129,6 @@ func resourceKeboolaMySqlWriter() *schema.Resource {
 						},
 
 						////////////////////SSH////////////////////
-
-					},
-				},
-			},
-			"mysql_ssh_parameters": {
-				Type:     schema.TypeMap,
-				Optional: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
 						"enabled": {
 							Type:     schema.TypeBool,
 							Optional: true,
@@ -159,13 +157,12 @@ func resourceKeboolaMySqlWriter() *schema.Resource {
 	}
 }
 
-/*
-func mySqlSSHConvertert(client *KBCClient) (str_body string, err error) {
-	//	mi := MySqlSSH{}
-
-	return str_body, nil
-}
-*/
+//What does it do:
+// It creates a MySql  writer component on keboola and intializing the valribles you put to the kebools terraform script.
+//When does it get called:
+// It called when resourceKeboolaMySql func calls it
+//Completed:
+// Yes.
 func resourceKeboolaMySqltWriterCreate(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Creating MySql Writer in Keboola")
 	client := meta.(*KBCClient)
@@ -182,7 +179,7 @@ func resourceKeboolaMySqltWriterCreate(d *schema.ResourceData, meta interface{})
 		return err
 	}
 	mysqlDatabaseCredentials := d.Get("mysql_wr_parameters").(map[string]interface{})
-	mysqlSSHDatabaseCredentials := d.Get("mysql_ssh_parameters").(map[string]interface{})
+	mysqlSSHDatabaseCredentials := d.Get("mysql_wr_parameters").(map[string]interface{})
 	err = createMySqlcredentialsConfiguration(mysqlDatabaseCredentials, mysqlSSHDatabaseCredentials, createdMySqlID, client)
 
 	if err != nil {
@@ -190,12 +187,19 @@ func resourceKeboolaMySqltWriterCreate(d *schema.ResourceData, meta interface{})
 	}
 
 	d.SetPartial("mysql_wr_parameters")
-	d.SetPartial("mysql_ssh_parameters")
+
 	d.SetId(createdMySqlID)
 	d.Partial(false)
 	return resourceKeboolaMySqlWriterRead(d, meta)
 }
-func createMySqlcredentialsConfiguration(MySqlCredentials map[string]interface{}, sshCredentials map[string]interface{}, createdawsredshiftID string, client *KBCClient) error {
+
+//What does it do:
+// It Configures the component and post it to the API Storage
+//When does it get called:
+// It called when the resourceKeboolaMySqlCreate function  calls it
+//Completed:
+// Yes.
+func createMySqlcredentialsConfiguration(MySqlCredentials map[string]interface{}, sshCredentials map[string]interface{}, createdMySqlID string, client *KBCClient) error {
 	var err error
 
 	mySqlWriterConfiguration := MySqlWriterConfiguration{}
@@ -203,7 +207,6 @@ func createMySqlcredentialsConfiguration(MySqlCredentials map[string]interface{}
 	mySqlWriterConfiguration.Parameters.Database, err = mapMySqlDatabaseCredentialsToConfiguration(MySqlCredentials, client)
 	mySqlWriterConfiguration.Parameters.Database.SSH, err = mapMySqlSSHCredentialsToConfiguration(sshCredentials, client)
 	mySqlWriterConfigurationJSON, err := json.Marshal(mySqlWriterConfiguration)
-
 	if err != nil {
 		return err
 	}
@@ -214,7 +217,7 @@ func createMySqlcredentialsConfiguration(MySqlCredentials map[string]interface{}
 
 	updateConfigurationRequestBuffer := buffer.FromForm(updateConfigurationRequestForm)
 
-	updateConfigurationResponse, err := client.PutToStorage(fmt.Sprintf("storage/components/keboola.wr-db-mysql/configs/%s", createdawsredshiftID), updateConfigurationRequestBuffer)
+	updateConfigurationResponse, err := client.PutToStorage(fmt.Sprintf("storage/components/keboola.wr-db-mysql/configs/%s", createdMySqlID), updateConfigurationRequestBuffer)
 
 	if hasErrors(err, updateConfigurationResponse) {
 		return extractError(err, updateConfigurationResponse)
@@ -222,6 +225,13 @@ func createMySqlcredentialsConfiguration(MySqlCredentials map[string]interface{}
 
 	return nil
 }
+
+//What does it do:
+// It creates an access token for your MySql writer to use it
+//When does it get called:
+// when you create you call the resourceKeboolaMySqlCreate function
+//Completed:
+//Yes
 func createMySqlAccessToken(MySqlID string, client *KBCClient) error {
 	createAccessTokenForm := url.Values{}
 	createAccessTokenForm.Add("description", fmt.Sprintf("wrmysql_%s", MySqlID))
@@ -237,6 +247,14 @@ func createMySqlAccessToken(MySqlID string, client *KBCClient) error {
 	return nil
 
 }
+
+//What does it do:
+// It Configures the component and post it to the API Storage
+//When does it get called:
+// It called when the resourceKeboolaMySqlWriterCreate function  calls it
+//Completed:
+// Yes.
+
 func createMySqlWriterConfiguration(name string, description string, client *KBCClient) (createAWSRedShiftID string, err error) {
 	createWriterForm := url.Values{}
 	createWriterForm.Add("name", name)
@@ -262,6 +280,13 @@ func createMySqlWriterConfiguration(name string, description string, client *KBC
 	return string(createWriterResult.ID), nil
 
 }
+
+//What does it do:
+//MySql credentials to configuration for the ddatabase.  puts all the values for credentials of the database in the database paramter structure
+//When does it get called:
+// It gets called for the resource createMySqlCredentialsConfiguration and the resourceKeboolaMySqlWriterCreate func.
+//Completed:
+// Yes.
 func mapMySqlDatabaseCredentialsToConfiguration(source map[string]interface{}, client *KBCClient) (MySqlWriterDatabaseParameters, error) {
 	databaseParameters := MySqlWriterDatabaseParameters{}
 	var err error
@@ -280,25 +305,18 @@ func mapMySqlDatabaseCredentialsToConfiguration(source map[string]interface{}, c
 		databaseParameters.Username = val.(string)
 	}
 	if val, ok := source["hashed_password"]; ok {
-		databaseParameters.EncryptedPassword, err = mySqlencyrptPassword(val.(string), client)
+		databaseParameters.EncryptedPassword, err = encyrptPassword("keboola.wr-db-mysql", val.(string), client)
 	}
 
 	return databaseParameters, err
 }
-func mySqlencyrptPassword(value string, client *KBCClient) (str_body string, err error) {
-	body := []byte(value)
-	projectID, err := ProjectID(client)
 
-	createResponseConfig, err := client.PostToDockerEncrypt("keboola.wr-db-mysql", body, projectID)
-	defer createResponseConfig.Body.Close()
-	resp_body, err := ioutil.ReadAll(createResponseConfig.Body)
-
-	if hasErrors(err, createResponseConfig) {
-		return "", err
-	}
-	str_body = string(resp_body)
-	return str_body, nil
-}
+//What does it do:
+//MySql SSH  credentials to configuration for the ddatabase.  puts all the values for credentials of the SSh in the SSH paramter structure
+//When does it get called:
+// It gets called for the resource createMySQlCredentialsConfiguration and the resourceKeboolaMySqlWriterCreate func.
+//Completed:
+// Yes.
 func mapMySqlSSHCredentialsToConfiguration(source map[string]interface{}, client *KBCClient) (SSHTunnel, error) {
 
 	sshParameters := SSHTunnel{}
@@ -308,7 +326,7 @@ func mapMySqlSSHCredentialsToConfiguration(source map[string]interface{}, client
 
 		sshParameters.Enabled, err = strconv.ParseBool(val.(string))
 		sshParameters.SSHKey, err = client.PostToDockerCreateSSH()
-		sshParameters.SSHKey.PrivateKeyEncrypted, err = mySqlencyrptPassword(sshParameters.SSHKey.PrivateKeyEncrypted, client)
+		sshParameters.SSHKey.PrivateKeyEncrypted, err = encyrptPassword("keboola.wr-db-mysql", sshParameters.SSHKey.PrivateKeyEncrypted, client)
 		sshParameters.SSHKey.PrivateKey = ""
 	}
 	if val, ok := source["sshHost"]; ok {
@@ -323,6 +341,13 @@ func mapMySqlSSHCredentialsToConfiguration(source map[string]interface{}, client
 
 	return sshParameters, err
 }
+
+//What does it do:
+//MySql Read allows you to see what is different from the terraform script and keboola platform and tells us if any changes where made
+//When does it get called:
+// It gets called for the resource resourceKeboolaMySqlWriterUpdate and the resourceKeboolaMySqlWriterCreate
+//Completed:
+// Yes.
 func resourceKeboolaMySqlWriterRead(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Reading MySql Writer From Keboola")
 	client := meta.(*KBCClient)
@@ -369,13 +394,20 @@ func resourceKeboolaMySqlWriterRead(d *schema.ResourceData, meta interface{}) er
 		sshParameters["sshPort"] = sshCredentials.SSHPort
 
 		d.Set("mysql_wr_parameters", dbParameters)
-		d.Set("mysql_ssh_parameters", sshParameters)
+		d.Set("mysql_wr_parameters", sshParameters)
 	}
 
 	return nil
 }
+
+//What does it do:
+//MySql update updates the keboola platform when changes have been make.
+//When does it get called:
+// It  get called from the resourceKeboolaMySqlWriter func.
+//Completed:
+// Yes.
 func resourceKeboolaMySqlWriterUpdate(d *schema.ResourceData, meta interface{}) error {
-	log.Println("[INFO] Updating AWS RedShift Writer in Keboola.")
+	log.Println("[INFO] Updating MySql Writer in Keboola.")
 
 	client := meta.(*KBCClient)
 
@@ -394,7 +426,7 @@ func resourceKeboolaMySqlWriterUpdate(d *schema.ResourceData, meta interface{}) 
 		return err
 	}
 	mysqlCredentials := d.Get("mysql_wr_parameters").(map[string]interface{})
-	mysshCredentials := d.Get("mysql_ssh_parameters").(map[string]interface{})
+	mysshCredentials := d.Get("mysql_wr_parameters").(map[string]interface{})
 	mysqlwriter.Configuration.Parameters.Database, err = mapMySqlDatabaseCredentialsToConfiguration(mysqlCredentials, client)
 	mysqlwriter.Configuration.Parameters.Database.SSH, err = mapMySqlSSHCredentialsToConfiguration(mysshCredentials, client)
 	mysqlwriterConfigJSON, err := json.Marshal(mysqlwriter.Configuration)
@@ -420,6 +452,13 @@ func resourceKeboolaMySqlWriterUpdate(d *schema.ResourceData, meta interface{}) 
 	return resourceKeboolaMySqlWriterRead(d, meta)
 
 }
+
+//What does it do:
+//It destory the information when the terraform block is removed
+//When does it get called:
+// when block of the terraform script is removed it gets called by resourceKeboolaMySqlWriter
+//Completed:
+// Yes.
 func resourceKeboolaMySqlWriterDelete(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[INFO] Deleting mySql Writer in Keboola: %s", d.Id())
 
