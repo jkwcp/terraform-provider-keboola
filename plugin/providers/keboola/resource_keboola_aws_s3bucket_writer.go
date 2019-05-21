@@ -1,10 +1,9 @@
 package keboola
 
-// this isn't complete
+// this is COmplete
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/url"
 
@@ -20,7 +19,6 @@ type AWSs3WriterDatabaseParameters struct {
 
 type AWSs3WriterDatabaseRowParameters struct {
 	Prefix string `json:"prefix"`
-	Name   string `json:"name"`
 }
 
 type AWSs3WriterStorageTable struct {
@@ -51,31 +49,18 @@ type AWSs3WriterProcessor struct {
 	Before []Awss3WriterStorageTableBefore `json:"before,omitempty"`
 }
 
-/*
-type AWSs3WriterProcessorDef struct {
-	Before struct {
-		Processorsdefinition []Awss3Definition `json:"definition"`
-	} `json:"before"`
-}
-type AWSs3WriterProcessorPara struct {
-	Before struct {
-		Processorsparameters []Awss3parameters `json: "parameters"`
-	} `json:"before"`
-}
-*/
 type Rowsinfo struct {
 	Storage    AWSs3WriterStorage               `json:"storage,omitempty"`
 	Processor  AWSs3WriterProcessor             `json:"processors,omitempty"`
 	Parameters AWSs3WriterDatabaseRowParameters `json:"parameters"`
-	id         string                           `json:"parameter`
+	id         string                           `json:"id"`
+	name       string                           `json:"name"`
 }
 type AWSs3WriterConfigurationParameters struct {
 	Parameters AWSs3WriterDatabaseParameters `json:"parameters"`
-
-	//	Component AWSs3WriterProcessorDef `json:"component,omitempty"`
 }
 type AWSs3WriterConfigurationRows struct {
-	RowsInfo Rowsinfo
+	RowsInfo Rowsinfo `json:"rows,omitempty"`
 }
 type AWSs3Writer struct {
 	ID                                 string                             `json:"id,omitempty"`
@@ -86,10 +71,10 @@ type AWSs3Writer struct {
 }
 
 //What does it do:
-// It  is the main function to the resource AWSRedShfitWriter. It sees if the sql writer needs to Update create read and delete.
+// It  is the main function to the resource AWS S3 Bucket. It sees if the S3 Bucket writer needs to Update, create or delete a componeent.
 // ALso it gives a map to what of what varibles are required or optional for keboola platform.
 //when does it get called:
-// It gets called when the keboola tf resource calls it.
+// It gets called when the keboola Provider calls it.
 //Completed:
 // Yes
 func resourceKeboolaAWSs3Writer() *schema.Resource {
@@ -135,9 +120,9 @@ func resourceKeboolaAWSs3Writer() *schema.Resource {
 }
 
 //What does it do:
-// It creates a AWS s3 writer component on keboola and intializing the valribles you put to the kebools script.
+// It creates a AWS s3 writer component on keboola when the provider sees that this is a new component from the terraform script
 //When does it get called:
-// It called when the terraform script has a new resource name.
+// It called by resourceKeboolaAWSs3Writer
 //Completed:
 // Yes.
 func resourceKeboolaAWSs3WriterCreate(d *schema.ResourceData, meta interface{}) error {
@@ -171,9 +156,9 @@ func resourceKeboolaAWSs3WriterCreate(d *schema.ResourceData, meta interface{}) 
 }
 
 //What does it do:
-//Creates configuration and credentials
+//Creates configuration and credentials for the S3 bucket
 //When does it get called:
-// It called when the terraform script has a new resource name.
+// It called by resourceKeboolaAWSs3WriterCreate
 //Completed:
 // Yes.
 func createAWSs3WriterConfiguration(name string, description string, client *KBCClient) (createAWSs3ID string, err error) {
@@ -205,8 +190,9 @@ func createAWSs3WriterConfiguration(name string, description string, client *KBC
 //What does it do:
 // It creates an access token for your aws s3 writer
 //When does it get called:
-// when you create a new terraform resource name
+// when resourceKeboolaAWSs3WriterCreate is called
 //Completed:
+//Yes
 func createAWSs3AccessToken(AWSs3ID string, client *KBCClient) error {
 	createAccessTokenForm := url.Values{}
 	createAccessTokenForm.Add("description", fmt.Sprintf("wrs3_%s", AWSs3ID))
@@ -224,9 +210,9 @@ func createAWSs3AccessToken(AWSs3ID string, client *KBCClient) error {
 }
 
 //What does it do:
-//AWS s3 credentials to configuration for the ddatabase.  puts all the values for credentials of the database in the
+//AWS s3 credentials to configuration for the database. It puts all the values for credentials of the database in the apporiate structure
 //When does it get called:
-// It gets called for the resource update and the creation
+// It gets called for the  resourceKeboolaAWSs3WriterUpdate and the resourceKeboolaAWSs3WriterCreate func
 //Completed:
 // Yes.
 func mapAWSs3CredentialsToConfiguration(source map[string]interface{}, client *KBCClient) (AWSs3WriterDatabaseParameters, error) {
@@ -241,30 +227,16 @@ func mapAWSs3CredentialsToConfiguration(source map[string]interface{}, client *K
 	}
 	if val, ok := source["secretaccesskey"]; ok {
 
-		Parameters.SecretKey, err = S3BucketencyrptPassword(val.(string), client)
+		Parameters.SecretKey, err = encyrptPassword("keboola.wr-aws-s3", val.(string), client)
 	}
 
 	return Parameters, err
-}
-func S3BucketencyrptPassword(value string, client *KBCClient) (str_body string, err error) {
-	body := []byte(value)
-	projectID, err := ProjectID(client)
-	fmt.Println(projectID)
-	createResponseConfig, err := client.PostToDockerEncrypt("keboola.wr-aws-s3", body, projectID)
-	defer createResponseConfig.Body.Close()
-	resp_body, err := ioutil.ReadAll(createResponseConfig.Body)
-
-	if hasErrors(err, createResponseConfig) {
-		return "", err
-	}
-	str_body = string(resp_body)
-	return str_body, nil
 }
 
 //What does it do:
 // It creates a new configruation for your AWS s3 and add the name and description you put for that configuration
 //When does it get called:
-//when the create method gets called it creates a new configuratiuon
+//when the resourceKeboolaAWSs3WriterCreate calls it
 //Completed:
 // Yes.
 func creates3AWSCredentialsConfiguration(awss3Credentials map[string]interface{}, createdawss3ID string, client *KBCClient) error {
@@ -297,7 +269,7 @@ func creates3AWSCredentialsConfiguration(awss3Credentials map[string]interface{}
 //What does it do:
 //Aws s3 Read allows you to see what is different from the terraform script and keboola platform and tells us if any changes where made
 //When does it get called:
-// It gets called for the resource update and the creation
+// It gets called for the resource resourceKeboolaAWSs3WriterUpdate and the resourceKeboolaAWSs3WriterCreate
 //Completed:
 // Yes.
 func resourceKeboolaAWSs3WriterRead(d *schema.ResourceData, meta interface{}) error {
@@ -340,9 +312,9 @@ func resourceKeboolaAWSs3WriterRead(d *schema.ResourceData, meta interface{}) er
 }
 
 //What does it do:
-//AWS s3 update updates the keboola platform when changes have been make.
+//AWS s3 updates the keboola platform when changes have been made on the terraform script.
 //When does it get called:
-// It  get called from the terraform script in the resources
+// It  get called by resourceKeboolaAWSs3Writer
 //Completed:
 // Yes.
 func resourceKeboolaAWSs3WriterUpdate(d *schema.ResourceData, meta interface{}) error {
@@ -395,7 +367,7 @@ func resourceKeboolaAWSs3WriterUpdate(d *schema.ResourceData, meta interface{}) 
 //What does it do:
 //It destory the information when the terraform block is removed
 //When does it get called:
-// when block of the terraform script is removed
+// it gets called by resourceKeboolaAWSs3Writer
 //Completed:
 // Yes
 func resourceKeboolaAWSs3WriterDelete(d *schema.ResourceData, meta interface{}) error {

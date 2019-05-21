@@ -1,9 +1,10 @@
 package keboola
 
+//4900
+//Completed
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/url"
 	"strconv"
@@ -34,13 +35,12 @@ type SQLServerWriterTableItem struct {
 	DefaultValue string `json:"default"`
 }
 type SQLServerWriterTable struct {
-	DatabaseName string `json:"dbName"`
-	Export       bool   `json:"export"`
-	Incremental  bool   `json:"incremental"`
-	TableID      string `json:"tableId"`
-	//	LoadType     string                     `json:"loadType"`
-	PrimaryKey []string                   `json:"primaryKey,omitempty"`
-	Items      []SQLServerWriterTableItem `json:"items"`
+	DatabaseName string                     `json:"dbName"`
+	Export       bool                       `json:"export"`
+	Incremental  bool                       `json:"incremental"`
+	TableID      string                     `json:"tableId"`
+	PrimaryKey   []string                   `json:"primaryKey,omitempty"`
+	Items        []SQLServerWriterTableItem `json:"items"`
 }
 
 type SQLServerWriterParameters struct {
@@ -78,7 +78,7 @@ type SQLServerWriter struct {
 // It  is the main function to the resource sql writer. It sees if the sql writer needs to Update create read and delete.
 // ALso it gives a map to what of what varibles are required or optional for keboola platform.
 //when does it get called:
-// It gets called when the keboola tf resource calls it.
+// It gets called when the keboola provider calls it.
 //Completed:
 // Yes
 func resourceKeboolaSQLServerWriter() *schema.Resource {
@@ -166,7 +166,7 @@ func resourceKeboolaSQLServerWriter() *schema.Resource {
 //What does it do:
 // It creates a Sql Server writer component on keboola and intializing the valribles you put to the kebools script.
 //When does it get called:
-// It called when the terraform script has a new resource name.
+// It gets called when the resourceKeboolaSQLServerWriter calls it
 //Completed:
 // Yes.
 func resourceKeboolaSQLServerWriterCreate(d *schema.ResourceData, meta interface{}) error {
@@ -191,7 +191,6 @@ func resourceKeboolaSQLServerWriterCreate(d *schema.ResourceData, meta interface
 	}
 	sqlserverDatabaseCredentials := d.Get("sqlserver_db_parameters").(map[string]interface{})
 
-	//	SQLServerSSH := d.Get("sqlserver_ssh_parameters").(map[string]interface{})
 	err = createSQLServerCredentialsConfiguration(sqlserverDatabaseCredentials, createSQLServerID, client)
 
 	if err != nil {
@@ -209,7 +208,7 @@ func resourceKeboolaSQLServerWriterCreate(d *schema.ResourceData, meta interface
 //What does it do:
 // It creates a new configruation for your Sql sever and add the name and description you put for that configuration
 //When does it get called:
-//when the create method gets called it creates a new configuratiuon
+//when the resourceKeboolaSQLServerWriterCreate func calls it
 //Completed:
 // Yes.
 func createSQLServerWriterConfiguration(name string, description string, client *KBCClient) (createdSQLServerID string, err error) {
@@ -239,9 +238,9 @@ func createSQLServerWriterConfiguration(name string, description string, client 
 }
 
 //What does it do:
-// It creates an access token for your sql server writer
+// It creates an access token for your sql server writer on the keboola platform
 //When does it get called:
-// when you create a new terraform resource name
+// when the resourceKeboolaSQLServerWriterCreate func calls it
 //Completed:
 // Yes.
 func createSQLServerAccessToken(SQLServerID string, client *KBCClient) error {
@@ -261,9 +260,9 @@ func createSQLServerAccessToken(SQLServerID string, client *KBCClient) error {
 }
 
 //What does it do:
-// It creates a new configruation for your Sql sever and add the name and description you put for that configuration
+// It creates a new configruation for your Sql sever and add the name and description you put for that terraform script
 //When does it get called:
-//when the create method gets called it creates a new configuratiuon
+//when the resourceKeboolaSQLServerWriterCreate func calls it
 //Completed:
 // Yes.
 func createSQLServerCredentialsConfiguration(sqlserverCredentials map[string]interface{}, createdSQLServerID string, client *KBCClient) error {
@@ -296,7 +295,7 @@ func createSQLServerCredentialsConfiguration(sqlserverCredentials map[string]int
 //What does it do:
 //Sql server credentials to configuration for the ddatabase.  puts all the values for credentials of the database in the
 //When does it get called:
-// It gets called for the resource update and the creation
+// It gets called for the resource resourceKeboolaSQLServerWriterCreate and the resourceKeboolaSQLServerWriterUpdate
 //Completed:
 // Yes.
 func mapSQLServerCredentialsToConfigurationDatabase(source map[string]interface{}, client *KBCClient) (SQLServerWriterDatabaseParameters, error) {
@@ -323,17 +322,17 @@ func mapSQLServerCredentialsToConfigurationDatabase(source map[string]interface{
 		databaseParameters.Username = val.(string)
 	}
 	if val, ok := source["hashed_password"]; ok {
-		databaseParameters.EncryptedPassword, err = SqlServerencyrptPassword(val.(string), client)
+		databaseParameters.EncryptedPassword, err = encyrptPassword("keboola.wr-db-mssql-v2", val.(string), client)
 	}
 	if val, ok := source["enabled"]; ok {
 		databaseParameters.SSH.Enabled, err = strconv.ParseBool(val.(string))
 	}
-	// //////////////////////SSH ///////////////////////
+
 	if val, ok := source["sshHost"]; ok {
 		databaseParameters.SSH.SSHHost = val.(string)
 		databaseParameters.Driver = "mssql"
 		databaseParameters.SSH.SSHKey, err = client.PostToDockerCreateSSH()
-		databaseParameters.SSH.SSHKey.PrivateKeyEncrypted, err = SqlServerencyrptPassword(databaseParameters.SSH.SSHKey.PrivateKeyEncrypted, client)
+		databaseParameters.SSH.SSHKey.PrivateKeyEncrypted, err = encyrptPassword("keboola.wr-db-mssql-v2", databaseParameters.SSH.SSHKey.PrivateKeyEncrypted, client)
 		databaseParameters.SSH.SSHKey.PrivateKey = ""
 	}
 	if val, ok := source["user"]; ok {
@@ -342,36 +341,14 @@ func mapSQLServerCredentialsToConfigurationDatabase(source map[string]interface{
 	if val, ok := source["sshPort"]; ok {
 		databaseParameters.SSH.SSHPort = val.(string)
 	}
-	/*
-		if databaseParameters.SSH.Enabled == true {
-		https: //docker-runner.keboola.com/docker/keboola.ssh-keygen-v2/action/generate
-		}
-	*/
-	////////////////////////filtering ///////////////////
 
 	return databaseParameters, err
 }
 
-func SqlServerencyrptPassword(value string, client *KBCClient) (str_body string, err error) {
-	body := []byte(value)
-	projectID, err := ProjectID(client)
-	fmt.Println(projectID)
-	createResponseConfig, err := client.PostToDockerEncrypt("keboola.wr-db-mssql-v2", body, projectID)
-	defer createResponseConfig.Body.Close()
-	resp_body, err := ioutil.ReadAll(createResponseConfig.Body)
-
-	if hasErrors(err, createResponseConfig) {
-		return "", err
-	}
-	str_body = string(resp_body)
-	return str_body, nil
-}
-
-//string(workspace.Owner.ID)
 //What does it do:
 //Sql server Read allows you to see what is different from the terraform script and keboola platform and tells us if any changes where made
 //When does it get called:
-// It gets called for the resource update and the creation
+// It gets called for the resource resourceKeboolaSQLServerWriterCreate  and the resourceKeboolaSQLServerWriterupdated call it
 //Completed:
 // Yes.
 func resourceKeboolaSQLServerWriterRead(d *schema.ResourceData, meta interface{}) error {
@@ -411,7 +388,7 @@ func resourceKeboolaSQLServerWriterRead(d *schema.ResourceData, meta interface{}
 //What does it do:
 //Sql server update updates the keboola platform when changes have been make.
 //When does it get called:
-// It  get called from the terraform script in the resources
+// It  get called from the resourceKeboolaSQLServerWriter
 //Completed:
 // Yes.
 func resourceKeboolaSQLServerWriterUpdate(d *schema.ResourceData, meta interface{}) error {
@@ -463,7 +440,7 @@ func resourceKeboolaSQLServerWriterUpdate(d *schema.ResourceData, meta interface
 }
 
 //What does it do:
-//It destory the information when the terraform block is removed
+//It destory the information when the resourceKeboolaSQLServerWriterDelete
 //When does it get called:
 // when block of the terraform script is removed
 //Completed:

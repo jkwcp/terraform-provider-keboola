@@ -1,5 +1,6 @@
 package keboola
-
+//4900
+// COmpleted
 import (
 	"encoding/json"
 	"fmt"
@@ -11,11 +12,11 @@ import (
 )
 
 //What does it do:
-//It creates a resource for sqlwriter talbe
+//It creates a resource for MySql writer Table
 //When does it get called:
-//it gets called from the propvider when the terraform script calls the provider
+//it gets called from the provider
 //Completed:
-// No
+// Yes
 func resourceKeboolaMySqlWriterTable() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceKeboolaMySQLWriterTablesCreate,
@@ -27,6 +28,11 @@ func resourceKeboolaMySqlWriterTable() *schema.Resource {
 			"writer_id": {
 				Type:     schema.TypeString,
 				Required: true,
+			},
+			"auto_run": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
 			},
 			"table": {
 				Type:     schema.TypeSet,
@@ -128,7 +134,7 @@ func resourceKeboolaMySqlWriterTable() *schema.Resource {
 //When does it get called:
 // It gets called when the the resourceKeboolaMySQLWriterTables calls it
 //Completed:
-// No
+// Yes
 func resourceKeboolaMySQLWriterTablesCreate(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Creating My Sql Writer Tables in Keboola")
 
@@ -147,7 +153,6 @@ func resourceKeboolaMySQLWriterTablesCreate(d *schema.ResourceData, meta interfa
 			Export:       config["export"].(bool),
 			TableID:      config["table_id"].(string),
 			Incremental:  config["incremental"].(bool),
-			//	LoadType:     config["load_type"].(string),
 		}
 
 		if q := config["primary_key"]; q != nil {
@@ -236,13 +241,13 @@ func resourceKeboolaMySQLWriterTablesCreate(d *schema.ResourceData, meta interfa
 }
 
 //What does it do:
-// Its suppose to Read and compare what the terraform script has and what the keboola provider has.
+// Its suppose to Read and compare what the terraform script has and what the keboola provider has.  Also it has an auto run option which allows you to run the process automatically
 //When does it get called:
-// it gets called with update and read
+// it gets called by resourceKeboolaMySQLTablesUpdate and resourceKeboolaMySQLTablesCreate func
 //Completed:
 // No
 func resourceKeboolaMySQLTablesRead(d *schema.ResourceData, meta interface{}) error {
-	log.Println("[INFO] Reading My Sqlr Writer Tables from Keboola.")
+	log.Println("[INFO] Reading My Sql Writer Tables from Keboola.")
 	if d.Id() == "" {
 		return nil
 	}
@@ -259,10 +264,10 @@ func resourceKeboolaMySQLTablesRead(d *schema.ResourceData, meta interface{}) er
 		return extractError(err, getMySQLWriterResponse)
 	}
 
-	var sqlserverWriter MySqlWriter
+	var mysqlWriter MySqlWriter
 
 	decoder := json.NewDecoder(getMySQLWriterResponse.Body)
-	err = decoder.Decode(&sqlserverWriter)
+	err = decoder.Decode(&mysqlWriter)
 
 	if err != nil {
 		return err
@@ -272,11 +277,11 @@ func resourceKeboolaMySQLTablesRead(d *schema.ResourceData, meta interface{}) er
 
 	storageInputTableMap := make(map[string]MySqlWriterStorageTable)
 
-	for _, storageInputTable := range sqlserverWriter.Configuration.Storage.Input.Tables {
+	for _, storageInputTable := range mysqlWriter.Configuration.Storage.Input.Tables {
 		storageInputTableMap[storageInputTable.Source] = storageInputTable
 	}
 
-	for _, tableConfig := range sqlserverWriter.Configuration.Parameters.Tables {
+	for _, tableConfig := range mysqlWriter.Configuration.Parameters.Tables {
 		storageInputTable := storageInputTableMap[tableConfig.TableID]
 		tableDetails := map[string]interface{}{
 			"db_Name":     tableConfig.DatabaseName,
@@ -310,12 +315,17 @@ func resourceKeboolaMySQLTablesRead(d *schema.ResourceData, meta interface{}) er
 	}
 
 	d.Set("table", tables)
-
+	if d.Get("auto_run") == true {
+		MySqlWriterRunResponse, err := client.PostToDockerRun("keboola.wr-db-mysql", d.Id())
+		if hasErrors(err, MySqlWriterRunResponse) {
+			return extractError(err, MySqlWriterRunResponse)
+		}
+	}
 	return nil
 }
 
 //What does it do:
-// Its suppose to update the table
+// Its suppose to update the table when changes are made from either the terraform script or Keboola Platform
 //When does it get called:
 // when the resourceKeboolaMySQLWriterTables gets called
 //Completed:
@@ -394,26 +404,26 @@ func resourceKeboolaMySQLWriterTablesUpdate(d *schema.ResourceData, meta interfa
 		return extractError(err, getWriterResponse)
 	}
 
-	var sqlserverWriter MySqlWriter
+	var mysqlWriter MySqlWriter
 
 	decoder := json.NewDecoder(getWriterResponse.Body)
-	err = decoder.Decode(&sqlserverWriter)
+	err = decoder.Decode(&mysqlWriter)
 
 	if err != nil {
 		return err
 	}
 
-	sqlserverWriter.Configuration.Parameters.Tables = mappedTables
-	sqlserverWriter.Configuration.Storage.Input.Tables = storageTables
+	mysqlWriter.Configuration.Parameters.Tables = mappedTables
+	mysqlWriter.Configuration.Storage.Input.Tables = storageTables
 
-	sqlserverConfigJSON, err := json.Marshal(sqlserverWriter.Configuration)
+	mysqlWriterConfigJSON, err := json.Marshal(mysqlWriter.Configuration)
 
 	if err != nil {
 		return err
 	}
 
 	updateMySQLForm := url.Values{}
-	updateMySQLForm.Add("configuration", string(sqlserverConfigJSON))
+	updateMySQLForm.Add("configuration", string(mysqlWriterConfigJSON))
 	updateMySQLForm.Add("changeDescription", "Update My Sql tables")
 
 	updateMySQLBuffer := buffer.FromForm(updateMySQLForm)
@@ -446,10 +456,10 @@ func resourceKeboolaMySQLWriterTablesDelete(d *schema.ResourceData, meta interfa
 		return extractError(err, getWriterResponse)
 	}
 
-	var sqlserverWriter MySqlWriter
+	var mysqlWriter MySqlWriter
 
 	decoder := json.NewDecoder(getWriterResponse.Body)
-	err = decoder.Decode(&sqlserverWriter)
+	err = decoder.Decode(&mysqlWriter)
 
 	if err != nil {
 		return err
@@ -457,19 +467,19 @@ func resourceKeboolaMySQLWriterTablesDelete(d *schema.ResourceData, meta interfa
 	}
 
 	var emptyTables []MySqlWriterTable
-	sqlserverWriter.Configuration.Parameters.Tables = emptyTables
+	mysqlWriter.Configuration.Parameters.Tables = emptyTables
 
 	var emptyStorageTable []MySqlWriterStorageTable
-	sqlserverWriter.Configuration.Storage.Input.Tables = emptyStorageTable
+	mysqlWriter.Configuration.Storage.Input.Tables = emptyStorageTable
 
-	sqlserverConfigJSON, err := json.Marshal(sqlserverWriter.Configuration)
+	mysqlWriterConfigJSON, err := json.Marshal(mysqlWriter.Configuration)
 
 	if err != nil {
 		return err
 	}
 
 	clearMySQLTableForm := url.Values{}
-	clearMySQLTableForm.Add("configuration", string(sqlserverConfigJSON))
+	clearMySQLTableForm.Add("configuration", string(mysqlWriterConfigJSON))
 	clearMySQLTableForm.Add("changeDescription", "Update MySQL tables")
 
 	clearMySQLTablesBuffer := buffer.FromForm(clearMySQLTableForm)

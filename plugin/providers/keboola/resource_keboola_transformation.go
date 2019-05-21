@@ -207,6 +207,11 @@ func resourceKeboolaTransformRead(d *schema.ResourceData, meta interface{}) erro
 		}
 	}
 
+	SqlServerRunResponse, err := client.PostToDockerRun("transformation", d.Id())
+	if hasErrors(err, SqlServerRunResponse) {
+		return err
+	}
+
 	return nil
 }
 
