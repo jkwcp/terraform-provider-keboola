@@ -17,6 +17,7 @@ import (
 //Incomplete: need to add the sourcing tables
 type SnowflakeExtractorParameters struct {
 	Database SnowflakeExtractorDatabaseParameters `json:"db"`
+	Tables   []ExtractorTable                     `json:"tables,omitempty"`
 }
 
 //SnowflakeExtractorDatabaseParameters: configurations on sourcing database
@@ -26,11 +27,27 @@ type SnowflakeExtractorDatabaseParameters struct {
 	Database          string `json:"database"`
 	Password          string `json:"password,omitempty"`
 	EncryptedPassword string `json:"#password,omitempty"`
-	Username          string `json:"user"`
+	User              string `json:"user"`
 	Schema            string `json:"schema"`
 	Port              string `json:"port"`
 	Driver            string `json:"driver"`
 	Warehouse         string `json:"warehouse"`
+}
+
+type SnowflakeExtractorDatabaseTable struct {
+	Schema    string `json:"schema"`
+	TableName string `json:"tableName"`
+}
+
+type ExtractorTable struct {
+	Enabled     bool                            `json:"enabled"`
+	TableID     int                             `json:"id,omitempty"`
+	Name        string                          `json:"name"`
+	Incremental bool                            `json:"incremental"`
+	OutputTable string                          `json:"outputTable"` //
+	PrimaryKey  []string                        `json:"primaryKey,omitempty"`
+	Columns     []string                        `json:"columns,omitempty"`
+	Table       SnowflakeExtractorDatabaseTable `json:"table"`
 }
 
 //SnowflakeExtractionConfiguration: component configuration
@@ -222,7 +239,7 @@ func mapCredentialsToConfiguration(source map[string]interface{}) SnowflakeExtra
 		databaseParameters.Warehouse = val.(string)
 	}
 	if val, ok := source["user"]; ok {
-		databaseParameters.Username = val.(string)
+		databaseParameters.User = val.(string)
 	}
 	if val, ok := source["hashed_password"]; ok {
 		databaseParameters.EncryptedPassword = val.(string)
@@ -269,6 +286,20 @@ func resourceKeboolaSnowflakeExtractorRead(d *schema.ResourceData, meta interfac
 	d.Set("name", snowFlakeExtractor.Name)
 	d.Set("description", snowFlakeExtractor.Description)
 
+	dbParameters := make(map[string]interface{})
+
+	databaseCredentials := snowFlakeExtractor.Configuration.Parameters.Database
+
+	dbParameters["hostname"] = databaseCredentials.HostName
+	dbParameters["port"] = databaseCredentials.Port
+	dbParameters["database"] = databaseCredentials.Database
+	dbParameters["schema"] = databaseCredentials.Schema
+	dbParameters["warehouse"] = databaseCredentials.Warehouse
+	dbParameters["user"] = databaseCredentials.User
+	dbParameters["hashed_password"] = databaseCredentials.EncryptedPassword
+
+	d.Set("snowflake_db_parameters", dbParameters)
+
 	return nil
 }
 
@@ -306,6 +337,9 @@ func resourceKeboolaSnowflakeExtractorUpdate(d *schema.ResourceData, meta interf
 	if hasErrors(err, updateCredentialsResponse) {
 		return extractError(err, updateCredentialsResponse)
 	}
+
+	snowFlakeDatabaseCredentials := d.Get("snowflake_db_parameters").(map[string]interface{})
+	err = createSnowflakeExtractorDatabaseConfiguration(snowFlakeDatabaseCredentials, d.Id(), client)
 
 	return resourceKeboolaSnowflakeExtractorRead(d, meta)
 }

@@ -441,7 +441,7 @@ func resourceKeboolaSQLServerWriterUpdate(d *schema.ResourceData, meta interface
 
 //What does it do:
 //It destory the information when the resourceKeboolaSQLServerWriterDelete
-//When does it get called:
+// When does it get called:
 // when block of the terraform script is removed
 //Completed:
 // Yes.
