@@ -98,11 +98,13 @@ func resourceKeboolaExtractorTableCreate(d *schema.ResourceData, meta interface{
 	for _, table := range tables {
 		config := table.(map[string]interface{})
 
+		outputTable := "in.c-keboola-ex-db-snowflake-" + extractorID + "." + config["name"].(string)
+
 		mappedTable := ExtractorTable{
 			Name:        config["name"].(string),
 			TableID:     config["table_id"].(int),
 			Incremental: config["incremental"].(bool),
-			OutputTable: config["output"].(string),
+			OutputTable: outputTable,
 			Enabled:     config["enabled"].(bool),
 		}
 
@@ -256,7 +258,7 @@ func resourceKeboolaExtractorTableUpdate(d *schema.ResourceData, meta interface{
 		mappedTables = append(mappedTables, mappedTable)
 	}
 
-	client := meta.(KBCClient)
+	client := meta.(*KBCClient)
 
 	getExtractorResponse, err := client.GetFromStorage(fmt.Sprintf("storage/components/keboola.ex-db-snowflake/configs/%s", d.Id()))
 

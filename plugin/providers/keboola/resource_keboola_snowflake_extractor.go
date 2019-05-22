@@ -43,8 +43,8 @@ type ExtractorTable struct {
 	Enabled     bool                            `json:"enabled"`
 	TableID     int                             `json:"id,omitempty"`
 	Name        string                          `json:"name"`
-	Incremental bool                            `json:"incremental"`
-	OutputTable string                          `json:"outputTable"` //
+	Incremental bool                            `json:"incremental, omitempty"`
+	OutputTable string                          `json:"outputTable,omitempty"` //
 	PrimaryKey  []string                        `json:"primaryKey,omitempty"`
 	Columns     []string                        `json:"columns,omitempty"`
 	Table       SnowflakeExtractorDatabaseTable `json:"table"`
@@ -194,7 +194,10 @@ func createSnowflakeExtractorConfiguration(name string, description string, clie
 func createSnowflakeExtractorDatabaseConfiguration(databaseConfiguration map[string]interface{}, createdSnowflakeID string, client *KBCClient) error {
 	snowflakeExtractorConfiguration := SnowflakeExtractorConfiguration{}
 
-	snowflakeExtractorConfiguration.Parameters.Database = mapCredentialsToConfiguration(databaseConfiguration)
+	var err error
+	err = nil
+
+	snowflakeExtractorConfiguration.Parameters.Database, err = mapCredentialsToConfiguration(databaseConfiguration, client)
 
 	snowflakeWriterConfigurationJSON, err := json.Marshal(snowflakeExtractorConfiguration)
 
@@ -220,8 +223,10 @@ func createSnowflakeExtractorDatabaseConfiguration(databaseConfiguration map[str
 //Maps entries on terraform to database configurations
 //Called by createSnowflakeExtractorDatabaseConfiguration
 //Complete
-func mapCredentialsToConfiguration(source map[string]interface{}) SnowflakeExtractorDatabaseParameters {
+func mapCredentialsToConfiguration(source map[string]interface{}, client *KBCClient) (SnowflakeExtractorDatabaseParameters, error) {
 	databaseParameters := SnowflakeExtractorDatabaseParameters{}
+	var err error
+	err = nil
 
 	if val, ok := source["hostname"]; ok {
 		databaseParameters.HostName = val.(string)
@@ -242,12 +247,12 @@ func mapCredentialsToConfiguration(source map[string]interface{}) SnowflakeExtra
 		databaseParameters.User = val.(string)
 	}
 	if val, ok := source["hashed_password"]; ok {
-		databaseParameters.EncryptedPassword = val.(string)
+		databaseParameters.EncryptedPassword, err = encyrptPassword("keboola.ex-db-snowflake", val.(string), client)
 	}
 
 	databaseParameters.Driver = "snowflake"
 
-	return databaseParameters
+	return databaseParameters, err
 }
 
 //Reads component configuration from Keboola Connection and compare with local Terraforms,
