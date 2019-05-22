@@ -1,4 +1,5 @@
 package keboola
+
 //4900
 // this isn't complete can't update. Can Create Tables and delete
 import (
@@ -22,7 +23,8 @@ func resourceKeboolaAWSS3Bucket() *schema.Resource {
 			"writer_id": {
 				Type:     schema.TypeString,
 				Required: true,
-			}, "table_id": {
+			},
+			"table_id": {
 				Type:     schema.TypeString,
 				Required: true,
 			},
@@ -31,16 +33,15 @@ func resourceKeboolaAWSS3Bucket() *schema.Resource {
 				Optional: true,
 				Default:  false,
 			},
-
 			"name": {
 				Type:     schema.TypeString,
 				Optional: true,
-			}, "s3_row_parameters": {
+			},
+			"s3_row_parameters": {
 				Type:     schema.TypeMap,
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-
 						"prefix": {
 							Type:     schema.TypeString,
 							Optional: true,
@@ -57,7 +58,7 @@ func resourceKeboolaAWSS3BucketTablesCreate(d *schema.ResourceData, meta interfa
 	writerID := d.Get("writer_id").(string)
 	tableID := d.Get("table_id").(string)
 
-	Procosser := configurationOfRows(tableID)
+	procosser := configurationOfRows(tableID)
 	storageTables := configurationOfStorageTable(tableID)
 
 	client := meta.(*KBCClient)
@@ -76,7 +77,7 @@ func resourceKeboolaAWSS3BucketTablesCreate(d *schema.ResourceData, meta interfa
 	}
 
 	awss3Writer.ConfigurationRow.RowsInfo.Storage.Input.Tables = storageTables
-	awss3Writer.ConfigurationRow.RowsInfo.Processor = Procosser
+	awss3Writer.ConfigurationRow.RowsInfo.Processor = procosser
 
 	awss3Row := d.Get("s3_row_parameters").(map[string]interface{})
 	awss3Writer.ConfigurationRow.RowsInfo.Parameters, err = mapAWSs3CredentialsToRowConfiguration(awss3Row, client)
