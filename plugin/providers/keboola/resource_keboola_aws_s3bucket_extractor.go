@@ -20,7 +20,7 @@ type S3BucketExtractorConfigurationParameters struct {
 }
 
 type S3BucketExtractorProcessor struct {
-	Definition string `json:"definition"`
+	Definition []byte `json:"definition"`
 	Parameters string `json:"parameters"`
 }
 
@@ -30,7 +30,6 @@ type S3BucketExtractorProcessorConfig struct {
 
 type S3BucketExtractorConfiguration struct {
 	Parameters S3BucketExtractorConfigurationParameters `json:"parameters"`
-	Processors S3BucketExtractorProcessorConfig         `json:"processors"`
 }
 
 type AWSS3Extractor struct {
