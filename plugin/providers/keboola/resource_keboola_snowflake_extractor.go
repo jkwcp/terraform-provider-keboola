@@ -114,10 +114,9 @@ func resourceKeboolaSnowlakeExtractor() *schema.Resource {
 							Required: true,
 						},
 						"hashed_password": {
-							Type:         schema.TypeString,
-							Required:     true,
-							Sensitive:    true,
-							ValidateFunc: validateKBCEncryptedValue,
+							Type:      schema.TypeString,
+							Required:  true,
+							Sensitive: true,
 						},
 					},
 				},
@@ -331,10 +330,17 @@ func resourceKeboolaSnowflakeExtractorUpdate(d *schema.ResourceData, meta interf
 		return err
 	}
 
+	snowFlakeDatabaseCredentials := d.Get("snowflake_db_parameters").(map[string]interface{})
+
+	snowFlakeExtractor.Configuration.Parameters.Database, err = mapCredentialsToConfiguration(snowFlakeDatabaseCredentials, client)
+
+	snowFlakeExtractorConfigJSON, err := json.Marshal(snowFlakeExtractor.Configuration)
+
 	updateCredentialsForm := url.Values{}
 	updateCredentialsForm.Add("name", d.Get("name").(string))
 	updateCredentialsForm.Add("description", d.Get("description").(string))
 	updateCredentialsForm.Add("changeDescription", "Updated Snowflake Extractor configuration via Terraform")
+	updateCredentialsForm.Add("configuration", string(snowFlakeExtractorConfigJSON))
 
 	updateCredentialsBuffer := buffer.FromForm(updateCredentialsForm)
 	updateCredentialsResponse, err := client.PutToStorage(fmt.Sprintf("storage/components/keboola.ex-db-snowflake/configs/%s", d.Id()), updateCredentialsBuffer)
@@ -342,9 +348,6 @@ func resourceKeboolaSnowflakeExtractorUpdate(d *schema.ResourceData, meta interf
 	if hasErrors(err, updateCredentialsResponse) {
 		return extractError(err, updateCredentialsResponse)
 	}
-
-	snowFlakeDatabaseCredentials := d.Get("snowflake_db_parameters").(map[string]interface{})
-	err = createSnowflakeExtractorDatabaseConfiguration(snowFlakeDatabaseCredentials, d.Id(), client)
 
 	return resourceKeboolaSnowflakeExtractorRead(d, meta)
 }

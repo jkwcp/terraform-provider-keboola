@@ -186,6 +186,7 @@ func resourceKeboolaExtractorTableRead(d *schema.ResourceData, meta interface{})
 			d.SetId("")
 			return nil
 		}
+		return extractError(err, getExtractorResponse)
 	}
 
 	var snowFlakeExtractor SnowFlakeExtractor
@@ -265,6 +266,7 @@ func resourceKeboolaExtractorTableUpdate(d *schema.ResourceData, meta interface{
 	if hasErrors(err, getExtractorResponse) {
 		return extractError(err, getExtractorResponse)
 	}
+
 	var snowFlakeExtractor SnowFlakeExtractor
 
 	decoder := json.NewDecoder(getExtractorResponse.Body)
@@ -281,6 +283,8 @@ func resourceKeboolaExtractorTableUpdate(d *schema.ResourceData, meta interface{
 	if err != nil {
 		return err
 	}
+
+	//conf := d.Get("configuration").(map[string]interface{})
 
 	updateSnowflakeForm := url.Values{}
 	updateSnowflakeForm.Add("configuration", string(snowflakeConfigJSON))

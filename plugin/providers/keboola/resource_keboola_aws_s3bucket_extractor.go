@@ -19,8 +19,18 @@ type S3BucketExtractorConfigurationParameters struct {
 	EncryptedAccessKeySecret string `json:"#secretAccessKey,omitempty"`
 }
 
+type S3BucketExtractorProcessor struct {
+	Definition string `json:"definition"`
+	Parameters string `json:"parameters"`
+}
+
+type S3BucketExtractorProcessorConfig struct {
+	After []S3BucketExtractorProcessor `json:"after"`
+}
+
 type S3BucketExtractorConfiguration struct {
 	Parameters S3BucketExtractorConfigurationParameters `json:"parameters"`
+	Processors S3BucketExtractorProcessorConfig         `json:"processors"`
 }
 
 type AWSS3Extractor struct {
