@@ -32,6 +32,7 @@ resource "keboola_snowflake_extractor" "Demo_Snowflake_Extractor6"{
   }
 }
 
+
 resource "keboola_extractor_table" "Demo_Snowflake_Extractor_Tables6" {
   extractor_id="${keboola_snowflake_extractor.Demo_Snowflake_Extractor6.id}"
   table{

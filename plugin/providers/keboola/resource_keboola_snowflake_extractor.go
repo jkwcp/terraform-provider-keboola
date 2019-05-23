@@ -25,7 +25,7 @@ type SnowflakeExtractorParameters struct {
 type SnowflakeExtractorDatabaseParameters struct {
 	HostName          string `json:"host"`
 	Database          string `json:"database"`
-	Password          string `json:"password,omitempty"`
+	Password          string `json:"database"`
 	EncryptedPassword string `json:"#password,omitempty"`
 	User              string `json:"user"`
 	Schema            string `json:"schema"`
@@ -246,6 +246,9 @@ func mapCredentialsToConfiguration(source map[string]interface{}, client *KBCCli
 		databaseParameters.User = val.(string)
 	}
 	if val, ok := source["hashed_password"]; ok {
+		databaseParameters.Password = val.(string)
+	}
+	if val, ok := source["hashed_password"]; ok {
 		databaseParameters.EncryptedPassword, err = encyrptPassword("keboola.ex-db-snowflake", val.(string), client)
 	}
 
@@ -289,20 +292,9 @@ func resourceKeboolaSnowflakeExtractorRead(d *schema.ResourceData, meta interfac
 	d.Set("id", snowFlakeExtractor.ID)
 	d.Set("name", snowFlakeExtractor.Name)
 	d.Set("description", snowFlakeExtractor.Description)
-
-	dbParameters := make(map[string]interface{})
-
 	databaseCredentials := snowFlakeExtractor.Configuration.Parameters.Database
 
-	dbParameters["hostname"] = databaseCredentials.HostName
-	dbParameters["port"] = databaseCredentials.Port
-	dbParameters["database"] = databaseCredentials.Database
-	dbParameters["schema"] = databaseCredentials.Schema
-	dbParameters["warehouse"] = databaseCredentials.Warehouse
-	dbParameters["user"] = databaseCredentials.User
-	dbParameters["hashed_password"] = databaseCredentials.EncryptedPassword
-
-	d.Set("snowflake_db_parameters", dbParameters)
+	d.Set("snowflake_db_parameters", databaseCredentials)
 
 	return nil
 }

@@ -51,10 +51,6 @@ func resourceKeboolaExtractorTable() *schema.Resource {
 							Optional: true,
 							Default:  true,
 						},
-						"output": {
-							Type:     schema.TypeString,
-							Optional: true,
-						},
 						"primary_key": {
 							Type:     schema.TypeList,
 							Optional: true,
